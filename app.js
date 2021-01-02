@@ -1,36 +1,126 @@
-
-class sensorReader {
-  constructor() {
-    this.waiters;
-  }
-  waitAndThen(waitTime, callback) {
-    if (this.waiters) {
-      clearTimeout(this.waiters);
-    }
-    this.waiters = setTimeout(callback, waitAndThen);
-  }
-}
-
-
+const { exec } = require("child_process");
 const noble = require('@abandonware/noble');
 const fs = require('fs');
 
+
+// move to config file or arguments
+const LIGHTSWITCH_IP_ADDRESS = '192.168.0.20';
+// magic numbers
 const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
 const DATA_SERVICE_UUID = '0000120400001000800000805f9b34fb';
 const DATA_CHARACTERISTIC_UUID = '00001a0100001000800000805f9b34fb';
 const FIRMWARE_CHARACTERISTIC_UUID = '00001a0200001000800000805f9b34fb';
 const REALTIME_CHARACTERISTIC_UUID = '00001a0000001000800000805f9b34fb';
 const REALTIME_META_VALUE = Buffer.from([0xA0, 0x1F]);
-const EXT = '.dump';
+
+class sensorReader {
+  constructor() {
+    this.uuid = '';
+    this.address = '';
+    this.name = ''
+    this.characteristics = {} // a map with key service-UUID, stores the array of characteristics
+    this.services = []; // stores an array of GATT service data objects
+    this.waiters;
+    this.peripheral;
+    this.device = {
+      device_id: undefined,
+      name: undefined,
+      measure : {
+          time: null
+      }
+    };
+    this.outlet = {
+      ip_address: LIGHTSWITCH_IP_ADDRESS
+    };
+  }
+  parse_data(data) {
+    let temperature = (data.readUInt16LE(0) / 10) * 9 / 5 + 32;
+    let lux = data.readUInt32LE(3);
+    let moisture = data.readUInt16BE(6);
+    let fertility = data.readUInt16LE(8);
+    return {
+        temperature: temperature,
+        lux: lux,
+        moisture: moisture,
+        fertility: fertility
+    };
+  }
+  waitAndThen(waitTime, callback) {
+    if (this.waiters) {
+      // console.log('clearing timeout clock');
+      clearTimeout(this.waiters);
+    }
+    this.waiters = setInterval(callback, waitTime);
+  }
+  requestData() {
+    // this.waitAndThen(2500, () => {
+      // if (this.characteristics !== {} || !!this.characteristics[DATA_CHARACTERISTIC_UUID]) {
+        // console.log("No operation because this.characteristics[DATA_CHARACTERISTIC_UUID] is false, but requestData was calledd somehow");
+      // } else {
+        // this.characteristics[DATA_CHARACTERISTIC_UUID].subscribe(this.receiveData);
+      // }
+      // then, loop again
+      // this.requestData();
+    // });
+    // sensor.characteristics[DATA_CHARACTERISTIC_UUID].read();
+    sensor.characteristics[DATA_CHARACTERISTIC_UUID].subscribe();
+  }
+  autoRescan() {
+    this.waitAndThen(8000, () => {
+      // console.log('resetting timeout clock');
+      noble.startScanning();
+    });
+  }
+  receiveData(data) {
+    console.log("receiveData called with data", data);
+    if (data) {
+      var res = this.parse_data(data);
+      Object.assign(this.device.measure, res, {time: Date.now()});
+      console.log("📥 Got back data:");
+      console.log("🌡 "+this.device.measure.temperature+"; 💦 "+ this.device.measure.moisture+"; 💡 "+ this.device.measure.lux );
+      if (this.device.measure.lux > 300) {
+        this.switchLightOff();
+      } else {
+        this.switchLightOn();
+      }
+    } else {
+      console.log("receiveData called with no data arg. ignoring it.");
+    }
+    this.autoRescan();
+  }
+  switchLightOff() {
+    console.log("💡 Turning off switch")
+    exec("./tplink_smartplug.py -t "+this.outlet.ip_address+" -c off", (error, stdout, stderr) => {
+      if (error) {
+          console.log(`error: ${error.message}`);
+          return;
+      }
+      if (stderr) {
+          console.log(`stderr: ${stderr}`);
+          return;
+      }
+      // console.log(`stdout: ${stdout}`);
+    });    
+  }
+  switchLightOn() {
+    console.log("💡 Turning on switch")
+    exec("./tplink_smartplug.py -t "+this.outlet.ip_address+" -c on", (error, stdout, stderr) => {
+      if (error) {
+          console.log(`error: ${error.message}`);
+          return;
+      }
+      if (stderr) {
+          console.log(`stderr: ${stderr}`);
+          return;
+      }
+      // console.log(`stdout: ${stdout}`);
+    });    
+  }
+}
+
+
 
 const sensor = new sensorReader();
-// collect device meta-data into this object:
-let meta = {
-  services: [], // stores an array of GATT service data objects
-  characteristics: {} // a map with key service-UUID, stores the array of characteristics
-};
-sensor.meta = meta;
-console.log("Sensor: ", sensor);
 
 noble.on('stateChange', function (state) {
   if (state === 'poweredOn') {
@@ -47,6 +137,7 @@ noble.on('discover', function (peripheral) {
   if (peripheral.uuid === DESIRED_PERIPHERAL_UUID) {
     process.stdout.write(`\r✅ Found ${DESIRED_PERIPHERAL_UUID}!`);
     process.stdout.write(`\n⚡️ Connecting to device with address ${peripheral.address}...`);
+    sensor.peripheral = peripheral;
     connectToDevice(peripheral);
   }
 });
@@ -68,90 +159,65 @@ const connectToDevice = function (peripheral) {
 };
 
 const findServices = function (noble, peripheral) {
-  meta.uuid = peripheral.uuid;
-  meta.address = peripheral.address;
-  meta.name = peripheral.advertisement.localName; // not needed but nice to have
-  meta.characteristics = {};
+  sensor.uuid = peripheral.uuid;
+  sensor.address = peripheral.address;
+  sensor.name = peripheral.advertisement.localName; // not needed but nice to have
+  sensor.characteristics = {};
+  sensor.peripheral = peripheral;
+  sensor.device.name = peripheral.advertisement.localName;
+  sensor.device.device_id = peripheral.id;
 
-  peripheral.discoverServices([], (error, services) => {
-    // let servicesToRead = services.length;
-    // console.log("Service has "+servicesToRead+" services"); 
-
+  sensor.peripheral.discoverServices([], (error, services) => {
     // we found the list of services, now trigger characteristics lookup for each of them:
     for (let i = 0; i < services.length; i++) {
       const service = services[i];
       if (service.uuid === DATA_SERVICE_UUID) {
 
-        // service.on('characteristicsDiscovered', (characteristics) => {
-        //   // store the list of characteristics per service
-        //   meta.characteristics[service.uuid] = characteristics;
-
-        //   console.log(`SRV\t${service.uuid} characteristic GATT data: `);
-        //   for (let i = 0; i < characteristics.length; i++) {
-        //     console.log(`\t${service.uuid} chara.\t  ${i} ${JSON.stringify(characteristics[i])}`);
-        //   }
-        // });
-
         service.discoverCharacteristics([], function (error, characteristics) {
-          // an object to keep all our data together 
-          let device = {
-            device_id: peripheral.id,
-            name: peripheral.advertisement.localName,
-            measure : {
-                time: null
-            }
-          };
           characteristics.forEach(function (characteristic) {
-            let time = {time: Date.now()};
             switch (characteristic.uuid) {
                 case DATA_CHARACTERISTIC_UUID:
-                    // console.log("DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
-                    characteristic.read(function (error, data) {
-                        var res = _parse_data(peripheral, data);
-                        Object.assign(device.measure, res, time);
-                        console.log("📥 Got back data:");
-                        console.log("🌡 "+device.measure.temperature+"; 💦 "+ device.measure.moisture+"; 💡 "+ device.measure.lux );
+                    console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
+                    sensor.characteristics[characteristic.uuid] = characteristic;
+                    sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
+                      sensor.receiveData(data);
                     });
+                    sensor.requestData();
                     break;
                 case FIRMWARE_CHARACTERISTIC_UUID:
-                  // console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
-                    characteristic.read(function (error, data) {
+                  console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
+                    sensor.characteristics[characteristic.uuid] = characteristic;
+                    sensor.characteristics[characteristic.uuid].read(function (error, data) {
                         var res = _parse_firmware(peripheral, data);
-                        Object.assign(device, res);
+                        Object.assign(sensor.device, res);
                         process.stdout.write("🔋 "+res.battery_level+"% | 𝒱 Firmware version: "+res.firmware_version+"\n");
                     });
                     break;
                 case REALTIME_CHARACTERISTIC_UUID:
                     console.log('⛏ Found a realtime endpoint. Enabling realtime on peripheral.id.');
-                    characteristic.write(REALTIME_META_VALUE, false);
+                    sensor.characteristics[characteristic.uuid] = characteristic;
+                    sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
+                    // sensor.characteristic.notify(true);
+                    // sensor.characteristic.subscribe(sensor.receiveData);
                     break;
                 default:
                     // console.log('Found characteristic uuid %s but not matched the criteria', characteristic.uuid);
             }
         });
+        // save characteristics
+        // console.log("chars before: ", sensor.characteristics)
+        // sensor.characteristics = characteristics;
+        // console.log("chars after: ", sensor.characteristics)
       });
+      
     }
     }
   });
 };
 
-function requestData() {
-  console.log("Waiting and then requesting data...");
 
-}
 
-function _parse_data(peripheral, data) {
-  let temperature = (data.readUInt16LE(0) / 10) * 9 / 5 + 32;
-  let lux = data.readUInt32LE(3);
-  let moisture = data.readUInt16BE(6);
-  let fertility = data.readUInt16LE(8);
-  return {
-      temperature: temperature,
-      lux: lux,
-      moisture: moisture,
-      fertility: fertility
-  };
-}
+
 
 function _parse_firmware(peripheral, data) {
   return {
