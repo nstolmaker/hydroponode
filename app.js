@@ -20,7 +20,6 @@ class sensorReader {
     this.name = ''
     this.characteristics = {} // a map with key service-UUID, stores the array of characteristics
     this.services = []; // stores an array of GATT service data objects
-    this.waiters;
     this.peripheral;
     this.device = {
       device_id: undefined,
@@ -45,13 +44,7 @@ class sensorReader {
         fertility: fertility
     };
   }
-  waitAndThen(waitTime, callback) {
-    if (this.waiters) {
-      // console.log('clearing timeout clock');
-      clearTimeout(this.waiters);
-    }
-    this.waiters = setInterval(callback, waitTime);
-  }
+
   requestData() {
     // this.waitAndThen(2500, () => {
       // if (this.characteristics !== {} || !!this.characteristics[DATA_CHARACTERISTIC_UUID]) {
@@ -64,12 +57,6 @@ class sensorReader {
     // });
     // sensor.characteristics[DATA_CHARACTERISTIC_UUID].read();
     sensor.characteristics[DATA_CHARACTERISTIC_UUID].subscribe();
-  }
-  autoRescan() {
-    this.waitAndThen(8000, () => {
-      // console.log('resetting timeout clock');
-      noble.startScanning();
-    });
   }
   receiveData(data) {
     console.log("receiveData called with data", data);
@@ -86,7 +73,7 @@ class sensorReader {
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
-    this.autoRescan();
+    mySensorController.autoRescan();
   }
   switchLightOff() {
     console.log("💡 Turning off switch")
@@ -118,29 +105,60 @@ class sensorReader {
   }
 }
 
-
-
-const sensor = new sensorReader();
-
-noble.on('stateChange', function (state) {
-  if (state === 'poweredOn') {
-    console.log("🔮 Scanning for device with UUID: " + DESIRED_PERIPHERAL_UUID+"...");
-    process.stdout.write('🔎 ');
-    noble.startScanning();
-  } else {
-    noble.stopScanning();
+class sensorController {
+  constructor(sensor) {
+    this.sensor = sensor;
+    this.waiters;
+    this.noble = noble;
+    this.register();
   }
-});
-
-noble.on('discover', function (peripheral) {
-  process.stdout.write('.');
-  if (peripheral.uuid === DESIRED_PERIPHERAL_UUID) {
-    process.stdout.write(`\r✅ Found ${DESIRED_PERIPHERAL_UUID}!`);
-    process.stdout.write(`\n⚡️ Connecting to device with address ${peripheral.address}...`);
-    sensor.peripheral = peripheral;
-    connectToDevice(peripheral);
+  waitAndThen(waitTime, callback) {
+    if (this.waiters) {
+      // console.log('clearing timeout clock');
+      clearTimeout(this.waiters);
+    }
+    this.waiters = setTimeout(callback, waitTime);
   }
-});
+  autoRescan() {
+    this.waitAndThen(4000, () => {
+      connectToDevice(this.sensor.peripheral);
+    });
+  }
+  register() {
+    this.noble.on('stateChange', (state) => {
+      if (state === 'poweredOn') {
+        console.log("🔮 Scanning for device with UUID: " + DESIRED_PERIPHERAL_UUID+"...");
+        process.stdout.write('🔎 ');
+        this.noble.startScanning();
+      } else {
+        this.noble.stopScanning();
+      }
+    });
+
+    this.noble.on('discover',  (peripheral) => {
+      process.stdout.write('.');
+      if (peripheral.uuid === DESIRED_PERIPHERAL_UUID) {
+        process.stdout.write(`\r✅ Found ${DESIRED_PERIPHERAL_UUID}!`);
+        process.stdout.write(`\n⚡️ Connecting to device with address ${peripheral.address}...`);
+        if (!this.sensor) {
+          console.log("Sensor is undefined at this point. probably this is just a fluke. restarting...")
+          init();
+        } else {
+          this.sensor.peripheral = peripheral;
+          connectToDevice(this.sensor.peripheral);
+        }
+      }
+    });
+  }
+}
+
+let sensor = new sensorReader();
+let mySensorController = new sensorController(sensor);
+
+const init = () => {
+  sensor = new sensorReader();
+  mySensorController = new sensorController(sensor);
+}
 
 const connectToDevice = function (peripheral) {
   // BLE cannot scan and connect in parallel, so we stop scanning here:
