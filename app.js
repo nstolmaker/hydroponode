@@ -59,23 +59,30 @@ class sensorReader {
     sensor.characteristics[DATA_CHARACTERISTIC_UUID].subscribe();
   }
   receiveData(data) {
-    console.log("receiveData called with data", data);
+    // console.log("receiveData called with data", data);
     if (data) {
       var res = this.parse_data(data);
       Object.assign(this.device.measure, res, {time: Date.now()});
-      console.log("📥 Got back data:");
+      // console.log("📥 Got back data:");
       console.log("🌡 "+this.device.measure.temperature+"; 💦 "+ this.device.measure.moisture+"; 💡 "+ this.device.measure.lux );
-      if (this.device.measure.lux > 300) {
-        this.switchLightOff();
+      // control based on light
+      // if (this.device.measure.lux > 300) {
+      //   this.switchOff();
+      // } else {
+      //   this.switchOn();
+      // }
+      // control based on temperature
+      if (this.device.measure.temperature > 72) {
+        this.switchOff();
       } else {
-        this.switchLightOn();
+        this.switchOn();
       }
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
     mySensorController.autoRescan();
   }
-  switchLightOff() {
+  switchOff() {
     console.log("💡 Turning off switch")
     exec("./tplink_smartplug.py -t "+this.outlet.ip_address+" -c off", (error, stdout, stderr) => {
       if (error) {
@@ -89,7 +96,7 @@ class sensorReader {
       // console.log(`stdout: ${stdout}`);
     });    
   }
-  switchLightOn() {
+  switchOn() {
     console.log("💡 Turning on switch")
     exec("./tplink_smartplug.py -t "+this.outlet.ip_address+" -c on", (error, stdout, stderr) => {
       if (error) {
@@ -195,7 +202,7 @@ const findServices = function (noble, peripheral) {
           characteristics.forEach(function (characteristic) {
             switch (characteristic.uuid) {
                 case DATA_CHARACTERISTIC_UUID:
-                    console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
+                    // console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
                     sensor.characteristics[characteristic.uuid] = characteristic;
                     sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
                       sensor.receiveData(data);
@@ -203,7 +210,7 @@ const findServices = function (noble, peripheral) {
                     sensor.requestData();
                     break;
                 case FIRMWARE_CHARACTERISTIC_UUID:
-                  console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
+                  // console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
                     sensor.characteristics[characteristic.uuid] = characteristic;
                     sensor.characteristics[characteristic.uuid].read(function (error, data) {
                         var res = _parse_firmware(peripheral, data);
