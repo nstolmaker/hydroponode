@@ -148,7 +148,9 @@ class sensorController {
 
     this.noble.on('discover',  (peripheral) => {
       process.stdout.write('.');
-      if (peripheral.uuid === DESIRED_PERIPHERAL_UUID) {
+      // TODO: this way works on the raspberry pi, but my mac wasnt resolving localname so i did the lookup by UUID. Make it smart and detect.
+      if (peripheral.advertisement.localName === 'Flower care') {
+      // if (peripheral.uuid === DESIRED_PERIPHERAL_UUID) {
         process.stdout.write(`\r✅ Found ${DESIRED_PERIPHERAL_UUID}!`);
         process.stdout.write(`\n⚡️ Connecting to device with address ${peripheral.address}...`);
         if (!this.sensor) {
