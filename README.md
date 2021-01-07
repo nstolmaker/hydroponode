@@ -6,4 +6,5 @@ To get new smartplugs working, just connect to their wifi network, set a manual 
 # Notes
 - 1st new smartplug is at: 192.168.0.41 "Pump"
 - 2nd new smartplug is at: 192.168.0.42 "Heater"
-- 3rd new smartplug is at: 192.168.0.43 "Lights"
+- 3rd new smartplug is at: 192.168.0.43 "Grow light"
+- 4th new smartplug is at: 192.168.0.44 "Outlet 4"

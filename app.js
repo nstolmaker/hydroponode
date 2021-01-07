@@ -4,7 +4,9 @@ const fs = require('fs');
 
 
 // move to config file or arguments
-const LIGHTSWITCH_IP_ADDRESS = '192.168.0.20';
+const PUMP_IP_ADDRESS = process.env.PUMP_IP_ADDRESS || '192.168.0.41';
+const HEATER_IP_ADDRESS = process.env.HEATER_IP_ADDRESS || '192.168.0.42';
+const LIGHTS_IP_ADDRESS = process.env.LIGHTS_IP_ADDRESS || '192.168.0.43';
 // magic numbers
 const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
 const DATA_SERVICE_UUID = '0000120400001000800000805f9b34fb';
@@ -29,7 +31,7 @@ class sensorReader {
       }
     };
     this.outlet = {
-      ip_address: LIGHTSWITCH_IP_ADDRESS
+      ip_address: HEATER_IP_ADDRESS
     };
   }
   parse_data(data) {
@@ -72,7 +74,7 @@ class sensorReader {
       //   this.switchOn();
       // }
       // control based on temperature
-      if (this.device.measure.temperature > 72) {
+      if (this.device.measure.temperature > 78) {
         this.switchOff();
       } else {
         this.switchOn();
@@ -219,7 +221,7 @@ const findServices = function (noble, peripheral) {
                     });
                     break;
                 case REALTIME_CHARACTERISTIC_UUID:
-                    console.log('⛏ Found a realtime endpoint. Enabling realtime on peripheral.id.');
+                    console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${peripheral.id}.`);
                     sensor.characteristics[characteristic.uuid] = characteristic;
                     sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
                     // sensor.characteristic.notify(true);
