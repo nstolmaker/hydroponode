@@ -3,10 +3,12 @@ const noble = require('@abandonware/noble');
 const fs = require('fs');
 
 
-// move to config file or arguments
+// dotenv support not really needed at the moment. See the package.json script 'waverleigh' for how to set these from CLI
 const PUMP_IP_ADDRESS = process.env.PUMP_IP_ADDRESS || '192.168.0.41';
 const HEATER_IP_ADDRESS = process.env.HEATER_IP_ADDRESS || '192.168.0.42';
 const LIGHTS_IP_ADDRESS = process.env.LIGHTS_IP_ADDRESS || '192.168.0.43';
+// console.log({PUMP_IP_ADDRESS}, {HEATER_IP_ADDRESS}, {LIGHTS_IP_ADDRESS});
+
 // magic numbers
 const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
 const DATA_SERVICE_UUID = '0000120400001000800000805f9b34fb';
