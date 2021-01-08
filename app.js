@@ -325,7 +325,7 @@ class sensorController {
         console.log("Done! (kinda) This is where we would run findCharacteristics but it requires picking that block apart so i'm not doing it yet")
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
-          console.log("\n⌛️ openServices request timed out. Asking for realtime data again...");
+          console.log("\n⌛️ WaitForServices request timed out. Asking for realtime data again...");
           // this seems like the way to go, since otherwise we have to remove the event listeners somehow
           // and then re-bind them. this seems to work, though it's complainging about an unknown peripheral
           // maybe this is actually just all I needed to get it working, no scanning required???
@@ -333,6 +333,11 @@ class sensorController {
           // for when we stop receiving data cuz it's been 10 seconds. So I don't think this is actually
           // working as a timeout re-try option... we should move this to the autoRescan function and then
           // put something real here that actually re-triggers the services search.
+          /* also this error: 
+          ⌛️ openServices request timed out. Asking for realtime data again...
+            Unexpected error in openServices:  TypeError: Cannot read property 'write' of undefined
+                at /home/nstolmaker/hydroponode/app.js:336:64
+          */
           sensor.characteristics[REALTIME_CHARACTERISTIC_UUID].write(REALTIME_META_VALUE, false);
           return false;
         } else {
@@ -409,7 +414,8 @@ class Lights {
     };
 
     const lightsShouldBeOn = ((LOCALTIME.hour >= LIGHTS_ON_TIME) && (LOCALTIME.hour < LIGHTS_OFF_TIME));
-    const lightsShouldBeOff = ((LOCALTIME.hour >= LIGHTS_OFF_TIME)); // && (LOCALTIME.hour <= LIGHTS_ON_TIME));
+    // TODO This is wrong. i'm sure there's some code somewhere that does it better.
+    const lightsShouldBeOff = ((LOCALTIME.hour >= LIGHTS_OFF_TIME) || (LOCALTIME.hour <= LIGHTS_ON_TIME));
     if (lightsShouldBeOn) {
       // console.log("Lights should be on");
       this.switchOn();
@@ -475,6 +481,12 @@ let mySensorController = new sensorController(sensor);
 mySensorController.sensor.controller = mySensorController;
 mySensorController.lights = lights;
 mySensorController.heater = heater;
+
+console.log('device time is: ', { 
+  hour: (new Date()).getHours(),
+  minutes: (new Date()).getMinutes(),
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+});
 
 const sendNotification = (message) => {
   console.warn("🚨 "+message);
