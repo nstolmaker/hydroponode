@@ -264,12 +264,14 @@ class sensorController {
     const waitForServices = () => new Promise((resolve, reject) => {
         sensor.peripheral.discoverServices([], (error, services) => {
           console.log("services discovered", services);
+          let foundTheServiceWeWereLookingFor = false;
           if (error) console.log("There was an error in discoverServices: ", error);
           // we found the list of services, now trigger characteristics lookup for each of them:
           for (let i = 0; i < services.length; i++) {
             const service = services[i];
             if (service.uuid === DATA_SERVICE_UUID) {
-              console.log("FOUND THE RIGHT SERVICE! UUID: ", services.uuid);
+              foundTheServiceWeWereLookingFor = true;
+              console.log("FOUND THE RIGHT SERVICE! UUID: ", service.uuid);
               service.discoverCharacteristics([], (error, characteristics) => {
                 characteristics.forEach(function (characteristic) {
                   switch (characteristic.uuid) {
@@ -306,6 +308,7 @@ class sensorController {
             
           }
           }
+          console.log("Finished looping services. Did we find the one we wanted? ", foundTheServiceWeWereLookingFor);
         // resolve(true);
         });
       // } catch(err) {
