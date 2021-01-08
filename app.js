@@ -251,7 +251,9 @@ class sensorController {
 
 
   findServices() {
-    const {peripheral} = this.sensor;
+    console.log("findServices called");
+    const peripheral = this.sensor.peripheral;
+    let sensor = this.sensor;
     sensor.uuid = peripheral.uuid;
     sensor.address = peripheral.address;
     sensor.name = peripheral.advertisement.localName; // not needed but nice to have
@@ -259,49 +261,83 @@ class sensorController {
     sensor.peripheral = peripheral;
     sensor.device.name = peripheral.advertisement.localName;
     sensor.device.device_id = peripheral.id;
+    const waitForServices = () => new Promise((resolve, reject) => {
+      try {
+        sensor.peripheral.discoverServices([], (error, services) => {
+          if (error) console.log("There was an error in discoverServices: ", error);
+          // we found the list of services, now trigger characteristics lookup for each of them:
+          for (let i = 0; i < services.length; i++) {
+            const service = services[i];
+            if (service.uuid === DATA_SERVICE_UUID) {
 
-    sensor.peripheral.discoverServices([], (error, services) => {
-      // we found the list of services, now trigger characteristics lookup for each of them:
-      for (let i = 0; i < services.length; i++) {
-        const service = services[i];
-        if (service.uuid === DATA_SERVICE_UUID) {
-
-          service.discoverCharacteristics([], function (error, characteristics) {
-            characteristics.forEach(function (characteristic) {
-              switch (characteristic.uuid) {
-                  case DATA_CHARACTERISTIC_UUID:
-                      // console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
-                      sensor.characteristics[characteristic.uuid] = characteristic;
-                      sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
-                        sensor.receiveData(data);
-                      });
-                      sensor.requestData();
-                      break;
-                  case FIRMWARE_CHARACTERISTIC_UUID:
-                    // console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
-                      sensor.characteristics[characteristic.uuid] = characteristic;
-                      sensor.characteristics[characteristic.uuid].read(function (error, data) {
-                          const res = sensor.parse_firmware(data);
-                          Object.assign(sensor.device, res);
-                          process.stdout.write("🔋 "+res.battery_level+"% | 𝒱 Firmware version: "+res.firmware_version+"\n");
-                      });
-                      break;
-                  case REALTIME_CHARACTERISTIC_UUID:
-                      console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${peripheral.id}.`);
-                      sensor.characteristics[characteristic.uuid] = characteristic;
-                      sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
-                      // sensor.characteristic.notify(true);
-                      // sensor.characteristic.subscribe(sensor.receiveData);
-                      break;
-                  default:
-                      // console.log('Found characteristic uuid %s but not matched the criteria', characteristic.uuid);
-              }
-          });
+              service.discoverCharacteristics([], function (error, characteristics) {
+                characteristics.forEach(function (characteristic) {
+                  switch (characteristic.uuid) {
+                      case DATA_CHARACTERISTIC_UUID:
+                          console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
+                          sensor.characteristics[characteristic.uuid] = characteristic;
+                          sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
+                            sensor.receiveData(data);
+                          });
+                          sensor.requestData();
+                          break;
+                      case FIRMWARE_CHARACTERISTIC_UUID:
+                        console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
+                          sensor.characteristics[characteristic.uuid] = characteristic;
+                          sensor.characteristics[characteristic.uuid].read(function (error, data) {
+                              const res = sensor.parse_firmware(data);
+                              Object.assign(sensor.device, res);
+                              process.stdout.write("🔋 "+res.battery_level+"% | 𝒱 Firmware version: "+res.firmware_version+"\n");
+                          });
+                          break;
+                      case REALTIME_CHARACTERISTIC_UUID:
+                          console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${peripheral.id}.`);
+                          sensor.characteristics[characteristic.uuid] = characteristic;
+                          sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
+                          // sensor.characteristic.notify(true);
+                          // sensor.characteristic.subscribe(sensor.receiveData);
+                          break;
+                      default:
+                          console.log('Found characteristic uuid %s but not matched the criteria', characteristic.uuid);
+                  }
+              });
+            });
+            
+          }
+          }
+        resolve(true);
         });
-        
-      }
+      } catch(err) {
+        console.log("waitForServices threw an error: ", err);
+        reject('Unknown Error in waitForServices'+err);
       }
     });
+
+    const openServices = () => {
+      return promiseWithTimeout(RECONNECT_TIMEOUT_CONST, waitForServices, TIMEOUT)
+      .then((resolveVal) => {
+        // this.findCharacteristics();
+        console.log("Done! (kinda) This is where we would run findCharacteristics but it requires picking that block apart so i'm not doing it yet")
+      }).catch((reason)=>{
+        if (reason === TIMEOUT) {
+          console.log("\n⌛️ openServices request timed out. Restarting...");
+          openServices();
+          return false;
+        } else {
+          console.log("Error connecting: ", reason);
+          return false;
+        }
+      });
+    };
+
+
+    try {
+        const servicesResponse = openServices();
+        servicesResponse.catch((reason) => console.log("Unexpected error in openServices: ", reason));
+      } catch(err) {
+        console.warn("Unknown error in openServices: ", err);
+      }
+    
   };
 }
 
