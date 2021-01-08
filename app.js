@@ -325,8 +325,15 @@ class sensorController {
         console.log("Done! (kinda) This is where we would run findCharacteristics but it requires picking that block apart so i'm not doing it yet")
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
-          console.log("\n⌛️ openServices request timed out. Restarting...");
-          this.connectToDevice();
+          console.log("\n⌛️ openServices request timed out. Asking for realtime data again...");
+          // this seems like the way to go, since otherwise we have to remove the event listeners somehow
+          // and then re-bind them. this seems to work, though it's complainging about an unknown peripheral
+          // maybe this is actually just all I needed to get it working, no scanning required???
+          // Oh and also this is supposed to be the timeout for openServices, and the below is really just 
+          // for when we stop receiving data cuz it's been 10 seconds. So I don't think this is actually
+          // working as a timeout re-try option... we should move this to the autoRescan function and then
+          // put something real here that actually re-triggers the services search.
+          sensor.characteristics[REALTIME_CHARACTERISTIC_UUID].write(REALTIME_META_VALUE, false);
           return false;
         } else {
           console.log("Error connecting: ", reason);
