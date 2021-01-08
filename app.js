@@ -10,14 +10,17 @@ const LIGHTS_IP_ADDRESS = process.env.LIGHTS_IP_ADDRESS || '192.168.0.43';
 
 // used for all the timeouts that we wrap everything with because this is wireless and it'll fail a lot.
 const INTERVAL_CONST = 500;
-const TIMEOUT_CONST = 5000;
+const TIMEOUT_CONST = 5000; // how long to wait before retrying for: "Peripheral Discovery"
+const RECONNECT_TIMEOUT_CONST = 11000;  // how long to wait before retrying for: "connect" and "data received".
 const TIMEOUT = 'Timeout';  // enum
 
-// target values
-const GREENHOUSE_TEMP_MIN = 75;
+// GREENHOUSE target values
+const GREENHOUSE_TEMP_MIN = 70;
 const GREENHOUSE_TEMP_MAX = 82;
 const GREENHOUSE_MOISTURE_MIN = 30;
 const GREENHOUSE_LIGHT_MIN = 250;
+const LIGHTS_ON_TIME = 6;
+const LIGHTS_OFF_TIME = 24;
 
 // magic numbers
 const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
@@ -35,15 +38,13 @@ class sensorReader {
     this.characteristics = {} // a map with key service-UUID, stores the array of characteristics
     this.services = []; // stores an array of GATT service data objects
     this.peripheral;
+    this.controller;
     this.device = {
       device_id: undefined,
       name: undefined,
       measure : {
           time: null
       }
-    };
-    this.outlet = {
-      ip_address: HEATER_IP_ADDRESS
     };
   }
   parse_data(data) {
@@ -79,21 +80,10 @@ class sensorReader {
       Object.assign(this.device.measure, res, {time: Date.now()});
       // console.log("📥 Got back data:");
       console.log("🌡 "+this.device.measure.temperature+"; 💦 "+ this.device.measure.moisture+"; 💡 "+ this.device.measure.lux );
-      // control based on light
-      // if (this.device.measure.lux > 300) {
-      //   this.switchOff();
-      // } else {
-      //   this.switchOn();
-      // }
+      // do stuff like turn lights on and off based on the time
+      this.controller.lights.manageLights(this.device.measure.lux);
       // control based on temperature
-      if (this.device.measure.temperature > GREENHOUSE_TEMP_MAX) {
-        this.switchOff();
-      } else if (this.device.measure.temperature < GREENHOUSE_TEMP_MIN || this.device.measure.temperature > GREENHOUSE_TEMP_MAX) {
-        console.warn("WARNING! TEMPERATURE IS OUT OF BOUNDS. Currently: "+this.device.measure.temperature);
-      } else {
-        // add lodash and use _.debounce so that this only happens once every mintue or so.
-        this.switchOn();
-      }
+      this.controller.heater.manageHeat(this.device.measure.temperature);
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
@@ -105,34 +95,6 @@ class sensorReader {
         firmware_version: data.toString('ascii', 2, data.length)
     };
   }
-  switchOff() {
-    console.log("💡 Turning off switch")
-    exec("./tplink_smartplug.py -t "+this.outlet.ip_address+" -c off", (error, stdout, stderr) => {
-      if (error) {
-          console.log(`error: ${error.message}`);
-          return;
-      }
-      if (stderr) {
-          console.log(`stderr: ${stderr}`);
-          return;
-      }
-      // console.log(`stdout: ${stdout}`);
-    });    
-  }
-  switchOn() {
-    console.log("💡 Turning on switch")
-    exec("./tplink_smartplug.py -t "+this.outlet.ip_address+" -c on", (error, stdout, stderr) => {
-      if (error) {
-          console.log(`error: ${error.message}`);
-          return;
-      }
-      if (stderr) {
-          console.log(`stderr: ${stderr}`);
-          return;
-      }
-      // console.log(`stdout: ${stdout}`);
-    });    
-  }
 }
 
 class sensorController {
@@ -142,26 +104,18 @@ class sensorController {
     this.sensor = sensor;
     this.waiters;
     this.noble = noble;
+    this.lights;
+    this.heater;
     this.register();
   }
-  waitAndThen(waitTime, callback) {
+  autoRescan() {
     if (this.waiters) {
-      // console.log('clearing timeout clock');
       clearTimeout(this.waiters);
     }
-    this.waiters = setTimeout(callback, waitTime);
-  }
-  autoRescan() {
-    this.waitAndThen(4000, () => {
+    this.waiters = setTimeout(() => {
       this.connectToDevice(this.sensor.peripheral);
-    });
+    }, RECONNECT_TIMEOUT_CONST);
   }
-
-  // const timeoutPromise = new Promise((resolve, reject) => {
-  //   timeoutHandle = setTimeout(() => {
-  //     reject(new Error(failureMessage), timeoutMs)
-  //   });
-  // });
 
   // this function just runs itself every INTERVAL_CONST, and then after TIMEOUT_CONST time, it'll reject.
   watchForPeripheralFound = () => {
@@ -183,9 +137,6 @@ class sensorController {
       }, INTERVAL_CONST);
     })
   };
-
-  // look for a peripheral
-  
 
   register() {
     this.noble.on('stateChange', (state) => {
@@ -241,44 +192,59 @@ class sensorController {
 
 
   connectToDevice() {
-    // BLE cannot scan and connect in parallel, so we stop scanning here:
-    noble.stopScanning();
-  
     /* 
       waitForConnection is a function that creates a new promise, and then issues a connect command on the peripheral
       it resolves on success. on failure it rejects with an error message that wont be seen.
     */
     const waitForConnection = () => new Promise((resolve, reject) => {
-      this.sensor.peripheral.connect((error) => {
-        if (error) {
-          console.log(`☢️ Connect error: ${error}`);
-          noble.startScanning([], true);
-          reject('error connecting: '+error);
-          return;
-        }
-        process.stdout.write('\r🔗 Connected!\n');
-        resolve(true);
-      });
+      try {
+        this.sensor.peripheral.connect((error) => {
+          if (error) {
+            console.log(`☢️ Connect error: ${error}`);
+            noble.startScanning([], true);
+            reject('error connecting: '+error);
+            return;
+          }
+          process.stdout.write('\r🔗 Connected!\n');
+          resolve(true);
+        });
+      } catch(err) {
+        console.log("waitForConnection threw an error: ", err);
+        reject('Unknown Error in waitForConnection'+err);
+      }
     });
     
     /* 
       connection makes use of promiseWithTimeout which is just Promise.race() under the hood.
-      it waits for either waitForConnection, or a timer of length TIMEOUT_CONST to resolve.
+      it waits for either waitForConnection, or a timer of length RECONNECT_TIMEOUT_CONST to resolve.
       promiseWithTimeout will reject if the timer wins the race. So if that happens then we 
       restart the connection request from the top. Otherwise, we have a connection, so findServices()!
     */
-    const connection = () => promiseWithTimeout(TIMEOUT_CONST, waitForConnection, TIMEOUT)
+    const openConnection = () => {
+      return promiseWithTimeout(RECONNECT_TIMEOUT_CONST, waitForConnection, TIMEOUT)
       .then((resolveVal) => {
         this.findServices();
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
-          console.log("⌛️ Connection request timed out. Restart?");
-          connection();
+          console.log("⌛️ Connection request timed out. Restarting...");
+          openConnection();
+          return false;
         } else {
           console.log("Error connecting: ", reason);
+          return false;
         }
       });
-    connection();
+    };
+
+    try {
+      // BLE cannot scan and connect in parallel, so we stop scanning here:
+        this.noble.stopScanning();
+        const connectionResponse = openConnection();
+        connectionResponse.catch((reason) => console.log("Unexpected error in stopStanning or openConnection: ", reason));
+      } catch(err) {
+        console.warn("Unknown error in connectToDevice: ", err);
+      }
+    
   };
 
 
@@ -329,10 +295,6 @@ class sensorController {
                       // console.log('Found characteristic uuid %s but not matched the criteria', characteristic.uuid);
               }
           });
-          // save characteristics
-          // console.log("chars before: ", sensor.characteristics)
-          // sensor.characteristics = characteristics;
-          // console.log("chars after: ", sensor.characteristics)
         });
         
       }
@@ -359,5 +321,112 @@ const promiseWithTimeout = (timeoutMs, promise, failureMessage) => {
   }); 
 }
 
+/* CONTROL THE LIGHTS! */
+class Lights {
+  switchOff() {
+    console.log("💡⬇️ Turning off switch")
+    exec("./tplink_smartplug.py -t "+LIGHTS_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
+      if (error) {
+          console.log(`error: ${error.message}`);
+          return;
+      }
+      if (stderr) {
+          console.log(`stderr: ${stderr}`);
+          return;
+      }
+      // console.log(`stdout: ${stdout}`);
+    });    
+  }
+  switchOn() {
+    console.log("💡⬆️ Turning on switch")
+    exec("./tplink_smartplug.py -t "+LIGHTS_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
+      if (error) {
+          console.log(`error: ${error.message}`);
+          return;
+      }
+      if (stderr) {
+          console.log(`stderr: ${stderr}`);
+          return;
+      }
+      // console.log(`stdout: ${stdout}`);
+    });    
+  }
+  manageLights(lux) {
+    let LOCALTIME = { 
+      hour: (new Date()).getHours(),
+      minutes: (new Date()).getMinutes(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    };
+
+    const lightsShouldBeOn = ((LOCALTIME.hour > LIGHTS_ON_TIME) || (LOCALTIME.hour < LIGHTS_OFF_TIME));
+    const lightsShouldBeOff = ((LOCALTIME.hour > LIGHTS_OFF_TIME) || (LOCALTIME.hour < LIGHTS_ON_TIME));
+    if (lightsShouldBeOn) {
+      // debounce
+      this.switchOn();
+    } else if (lightsShouldBeOff) {
+      // debounce
+      this.switchOff();
+    }
+  };
+}
+
+
+/* CONTROL THE HEAT! */
+class Heater {
+  switchOff() {
+    console.log("🌡♨️ Turning off switch")
+    exec("./tplink_smartplug.py -t "+HEATER_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
+      if (error) {
+          console.log(`error: ${error.message}`);
+          return;
+      }
+      if (stderr) {
+          console.log(`stderr: ${stderr}`);
+          return;
+      }
+      // console.log(`stdout: ${stdout}`);
+    });    
+  }
+  switchOn() {
+    console.log("🌡❄️ Turning on switch")
+    exec("./tplink_smartplug.py -t "+HEATER_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
+      if (error) {
+          console.log(`error: ${error.message}`);
+          return;
+      }
+      if (stderr) {
+          console.log(`stderr: ${stderr}`);
+          return;
+      }
+      // console.log(`stdout: ${stdout}`);
+    });    
+  }
+  manageHeat(temperature) {
+    const itsTooHot = temperature > GREENHOUSE_TEMP_MAX;
+    const itsTooCold = temperature < GREENHOUSE_TEMP_MIN;
+    const itsWayTooCold = temperature < (GREENHOUSE_TEMP_MIN - 10);
+    const itsWayTooHot = temperature > (GREENHOUSE_TEMP_MIN + 10);
+
+    if (itsTooHot) {
+      // add lodash and use _.debounce so that this only happens once every mintue or so.
+      this.switchOff();
+    } else if (itsTooCold) {
+      this.switchOn();
+    } else if (itsWayTooCold || itsWayTooHot) {
+      sendNotification("WARNING! TEMPERATURE IS OUT OF BOUNDS. Currently: "+temperature);
+    }
+  };
+}
+
+
 let sensor = new sensorReader();
+let lights = new Lights;
+let heater = new Heater;
 let mySensorController = new sensorController(sensor);
+mySensorController.sensor.controller = mySensorController;
+mySensorController.lights = lights;
+mySensorController.heater = heater;
+
+const sendNotification = (message) => {
+  console.warn("🚨 "+message);
+}
