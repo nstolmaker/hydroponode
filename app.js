@@ -14,7 +14,7 @@ const INTERVAL_CONST = 500;
 const TIMEOUT_CONST = 5000; // how long to wait before retrying for: "Peripheral Discovery"
 const RECONNECT_TIMEOUT_CONST = 11000;  // how long to wait before retrying for: "connect" and "data received".
 const TIMEOUT = 'Timeout';  // enum
-const THROTTLE_SWITCH_TIME = 1000 * 10; // only flick switches once per minute
+const THROTTLE_SWITCH_TIME = 1000 * 30; // only flick switches once per minute
 
 // GREENHOUSE target values
 const GREENHOUSE_TEMP_MIN = 70;
