@@ -2,12 +2,22 @@ const { exec } = require("child_process");
 const noble = require('@abandonware/noble');
 const fs = require('fs');
 
-
 // dotenv support not really needed at the moment. See the package.json script 'waverleigh' for how to set these from CLI
 const PUMP_IP_ADDRESS = process.env.PUMP_IP_ADDRESS || '192.168.0.41';
 const HEATER_IP_ADDRESS = process.env.HEATER_IP_ADDRESS || '192.168.0.42';
 const LIGHTS_IP_ADDRESS = process.env.LIGHTS_IP_ADDRESS || '192.168.0.43';
 // console.log({PUMP_IP_ADDRESS}, {HEATER_IP_ADDRESS}, {LIGHTS_IP_ADDRESS});
+
+// used for all the timeouts that we wrap everything with because this is wireless and it'll fail a lot.
+const INTERVAL_CONST = 500;
+const TIMEOUT_CONST = 5000;
+const TIMEOUT = 'Timeout';  // enum
+
+// target values
+const GREENHOUSE_TEMP_MIN = 75;
+const GREENHOUSE_TEMP_MAX = 82;
+const GREENHOUSE_MOISTURE_MIN = 30;
+const GREENHOUSE_LIGHT_MIN = 250;
 
 // magic numbers
 const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
@@ -76,15 +86,24 @@ class sensorReader {
       //   this.switchOn();
       // }
       // control based on temperature
-      if (this.device.measure.temperature > 78) {
+      if (this.device.measure.temperature > GREENHOUSE_TEMP_MAX) {
         this.switchOff();
+      } else if (this.device.measure.temperature < GREENHOUSE_TEMP_MIN || this.device.measure.temperature > GREENHOUSE_TEMP_MAX) {
+        console.warn("WARNING! TEMPERATURE IS OUT OF BOUNDS. Currently: "+this.device.measure.temperature);
       } else {
+        // add lodash and use _.debounce so that this only happens once every mintue or so.
         this.switchOn();
       }
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
     mySensorController.autoRescan();
+  }
+  parse_firmware(data) {
+    return {
+        battery_level: parseInt(data.toString('hex', 0, 1), 16),
+        firmware_version: data.toString('ascii', 2, data.length)
+    };
   }
   switchOff() {
     console.log("💡 Turning off switch")
@@ -118,6 +137,8 @@ class sensorReader {
 
 class sensorController {
   constructor(sensor) {
+    this.peripheralPromise;
+    this.peripheralFound = false;
     this.sensor = sensor;
     this.waiters;
     this.noble = noble;
@@ -132,15 +153,67 @@ class sensorController {
   }
   autoRescan() {
     this.waitAndThen(4000, () => {
-      connectToDevice(this.sensor.peripheral);
+      this.connectToDevice(this.sensor.peripheral);
     });
   }
+
+  // const timeoutPromise = new Promise((resolve, reject) => {
+  //   timeoutHandle = setTimeout(() => {
+  //     reject(new Error(failureMessage), timeoutMs)
+  //   });
+  // });
+
+  // this function just runs itself every INTERVAL_CONST, and then after TIMEOUT_CONST time, it'll reject.
+  watchForPeripheralFound = () => {
+    return new Promise((resolve, reject) => {
+      const startTime = new Date().getTime();
+      const pollInterval = setInterval(() => {
+        if (this.sensor.peripheral) {
+          clearInterval(pollInterval);
+          resolve(this.sensor.peripheral);
+          return true;
+        } else if ((new Date().getTime() - startTime) > TIMEOUT_CONST) {
+          console.log("⌛️ Peripheral Discovery Timeout. Restarting...");
+          clearInterval(pollInterval);
+          reject(TIMEOUT);
+          return false;
+        } else {
+          // process.stdout.write('#');
+        }
+      }, INTERVAL_CONST);
+    })
+  };
+
+  // look for a peripheral
+  
+
   register() {
     this.noble.on('stateChange', (state) => {
       if (state === 'poweredOn') {
-        console.log("🔮 Scanning for device with UUID: " + DESIRED_PERIPHERAL_UUID+"...");
-        process.stdout.write('🔎 ');
-        this.noble.startScanning();
+        const findPeripheral = () => {
+          return new Promise((resolve, reject) => {
+            console.log("🔮 Scanning for device with UUID: " + DESIRED_PERIPHERAL_UUID+"...");
+            process.stdout.write('🔎 ');
+
+            // start scanning for devices
+            this.noble.startScanning();
+      
+            // instantiate the timeout watcher, which will either return true or false. 
+            // if true, we have a peripheral! if false, then we need to start over.
+            this.watchForPeripheralFound().then((foundVal) => {
+              // This block runs if we found a peripheral
+              // this.sensor.peripheral
+            }).catch((reason) => {
+              if (reason === TIMEOUT) {
+                this.noble.stopScanning();
+                findPeripheral();
+              } else {
+                console.log("Failed to discover peripheral, because: "+reason);
+              }
+            });
+          });
+        };
+        findPeripheral();
       } else {
         this.noble.stopScanning();
       }
@@ -149,111 +222,142 @@ class sensorController {
     this.noble.on('discover',  (peripheral) => {
       process.stdout.write('.');
       // TODO: this way works on the raspberry pi, but my mac wasnt resolving localname so i did the lookup by UUID. Make it smart and detect.
-      if (peripheral.advertisement.localName === 'Flower care') {
-      // if (peripheral.uuid === DESIRED_PERIPHERAL_UUID) {
+      // if (peripheral.advertisement.localName === 'Flower care') {
+      if (peripheral.uuid === DESIRED_PERIPHERAL_UUID) {
         process.stdout.write(`\r✅ Found ${DESIRED_PERIPHERAL_UUID}!`);
+        
         process.stdout.write(`\n⚡️ Connecting to device with address ${peripheral.address}...`);
         if (!this.sensor) {
           console.log("Sensor is undefined at this point. probably this is just a fluke. restarting...")
-          init();
+          this.noble.stopScanning();
+          this.findPeripheral();
         } else {
           this.sensor.peripheral = peripheral;
-          connectToDevice(this.sensor.peripheral);
+          this.connectToDevice();
         }
       }
     });
   }
+
+
+  connectToDevice() {
+    // BLE cannot scan and connect in parallel, so we stop scanning here:
+    noble.stopScanning();
+  
+    /* 
+      waitForConnection is a function that creates a new promise, and then issues a connect command on the peripheral
+      it resolves on success. on failure it rejects with an error message that wont be seen.
+    */
+    const waitForConnection = () => new Promise((resolve, reject) => {
+      this.sensor.peripheral.connect((error) => {
+        if (error) {
+          console.log(`☢️ Connect error: ${error}`);
+          noble.startScanning([], true);
+          reject('error connecting: '+error);
+          return;
+        }
+        process.stdout.write('\r🔗 Connected!\n');
+        resolve(true);
+      });
+    });
+    
+    /* 
+      connection makes use of promiseWithTimeout which is just Promise.race() under the hood.
+      it waits for either waitForConnection, or a timer of length TIMEOUT_CONST to resolve.
+      promiseWithTimeout will reject if the timer wins the race. So if that happens then we 
+      restart the connection request from the top. Otherwise, we have a connection, so findServices()!
+    */
+    const connection = () => promiseWithTimeout(TIMEOUT_CONST, waitForConnection, TIMEOUT)
+      .then((resolveVal) => {
+        this.findServices();
+      }).catch((reason)=>{
+        if (reason === TIMEOUT) {
+          console.log("⌛️ Connection request timed out. Restart?");
+          connection();
+        } else {
+          console.log("Error connecting: ", reason);
+        }
+      });
+    connection();
+  };
+
+
+  findServices() {
+    const {peripheral} = this.sensor;
+    sensor.uuid = peripheral.uuid;
+    sensor.address = peripheral.address;
+    sensor.name = peripheral.advertisement.localName; // not needed but nice to have
+    sensor.characteristics = {};
+    sensor.peripheral = peripheral;
+    sensor.device.name = peripheral.advertisement.localName;
+    sensor.device.device_id = peripheral.id;
+
+    sensor.peripheral.discoverServices([], (error, services) => {
+      // we found the list of services, now trigger characteristics lookup for each of them:
+      for (let i = 0; i < services.length; i++) {
+        const service = services[i];
+        if (service.uuid === DATA_SERVICE_UUID) {
+
+          service.discoverCharacteristics([], function (error, characteristics) {
+            characteristics.forEach(function (characteristic) {
+              switch (characteristic.uuid) {
+                  case DATA_CHARACTERISTIC_UUID:
+                      // console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
+                      sensor.characteristics[characteristic.uuid] = characteristic;
+                      sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
+                        sensor.receiveData(data);
+                      });
+                      sensor.requestData();
+                      break;
+                  case FIRMWARE_CHARACTERISTIC_UUID:
+                    // console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
+                      sensor.characteristics[characteristic.uuid] = characteristic;
+                      sensor.characteristics[characteristic.uuid].read(function (error, data) {
+                          const res = sensor.parse_firmware(data);
+                          Object.assign(sensor.device, res);
+                          process.stdout.write("🔋 "+res.battery_level+"% | 𝒱 Firmware version: "+res.firmware_version+"\n");
+                      });
+                      break;
+                  case REALTIME_CHARACTERISTIC_UUID:
+                      console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${peripheral.id}.`);
+                      sensor.characteristics[characteristic.uuid] = characteristic;
+                      sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
+                      // sensor.characteristic.notify(true);
+                      // sensor.characteristic.subscribe(sensor.receiveData);
+                      break;
+                  default:
+                      // console.log('Found characteristic uuid %s but not matched the criteria', characteristic.uuid);
+              }
+          });
+          // save characteristics
+          // console.log("chars before: ", sensor.characteristics)
+          // sensor.characteristics = characteristics;
+          // console.log("chars after: ", sensor.characteristics)
+        });
+        
+      }
+      }
+    });
+  };
+}
+
+
+const promiseWithTimeout = (timeoutMs, promise, failureMessage) => {
+  let timeoutHandle;
+  const timeoutPromise = new Promise((resolve, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(failureMessage);
+    }, timeoutMs);
+  });
+
+  return Promise.race([ 
+    promise(), 
+    timeoutPromise, 
+  ]).then((result) => {
+    clearTimeout(timeoutHandle);
+    return result;
+  }); 
 }
 
 let sensor = new sensorReader();
 let mySensorController = new sensorController(sensor);
-
-const init = () => {
-  sensor = new sensorReader();
-  mySensorController = new sensorController(sensor);
-}
-
-const connectToDevice = function (peripheral) {
-  // BLE cannot scan and connect in parallel, so we stop scanning here:
-  noble.stopScanning();
-
-  peripheral.connect((error) => {
-    if (error) {
-      console.log(`☢️ Connect error: ${error}`);
-      noble.startScanning([], true);
-      return;
-    }
-    process.stdout.write('\r🔗 Connected!\n');
-
-    findServices(noble, peripheral);
-  });
-};
-
-const findServices = function (noble, peripheral) {
-  sensor.uuid = peripheral.uuid;
-  sensor.address = peripheral.address;
-  sensor.name = peripheral.advertisement.localName; // not needed but nice to have
-  sensor.characteristics = {};
-  sensor.peripheral = peripheral;
-  sensor.device.name = peripheral.advertisement.localName;
-  sensor.device.device_id = peripheral.id;
-
-  sensor.peripheral.discoverServices([], (error, services) => {
-    // we found the list of services, now trigger characteristics lookup for each of them:
-    for (let i = 0; i < services.length; i++) {
-      const service = services[i];
-      if (service.uuid === DATA_SERVICE_UUID) {
-
-        service.discoverCharacteristics([], function (error, characteristics) {
-          characteristics.forEach(function (characteristic) {
-            switch (characteristic.uuid) {
-                case DATA_CHARACTERISTIC_UUID:
-                    // console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
-                    sensor.characteristics[characteristic.uuid] = characteristic;
-                    sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
-                      sensor.receiveData(data);
-                    });
-                    sensor.requestData();
-                    break;
-                case FIRMWARE_CHARACTERISTIC_UUID:
-                  // console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
-                    sensor.characteristics[characteristic.uuid] = characteristic;
-                    sensor.characteristics[characteristic.uuid].read(function (error, data) {
-                        var res = _parse_firmware(peripheral, data);
-                        Object.assign(sensor.device, res);
-                        process.stdout.write("🔋 "+res.battery_level+"% | 𝒱 Firmware version: "+res.firmware_version+"\n");
-                    });
-                    break;
-                case REALTIME_CHARACTERISTIC_UUID:
-                    console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${peripheral.id}.`);
-                    sensor.characteristics[characteristic.uuid] = characteristic;
-                    sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
-                    // sensor.characteristic.notify(true);
-                    // sensor.characteristic.subscribe(sensor.receiveData);
-                    break;
-                default:
-                    // console.log('Found characteristic uuid %s but not matched the criteria', characteristic.uuid);
-            }
-        });
-        // save characteristics
-        // console.log("chars before: ", sensor.characteristics)
-        // sensor.characteristics = characteristics;
-        // console.log("chars after: ", sensor.characteristics)
-      });
-      
-    }
-    }
-  });
-};
-
-
-
-
-
-function _parse_firmware(peripheral, data) {
-  return {
-      battery_level: parseInt(data.toString('hex', 0, 1), 16),
-      firmware_version: data.toString('ascii', 2, data.length)
-  };
-}
-
