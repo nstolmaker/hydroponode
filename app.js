@@ -262,14 +262,14 @@ class sensorController {
     // this.sensor.device.name = this.sensor.peripheral.advertisement.localName;
     // this.sensor.device.device_id = this.sensor.peripheral.id;
     const waitForServices = () => new Promise((resolve, reject) => {
-        this.sensor.peripheral.discoverServices([], (error, services) => {
+        sensor.peripheral.discoverServices([], (error, services) => {
           console.log("services discovered", services);
           if (error) console.log("There was an error in discoverServices: ", error);
           // we found the list of services, now trigger characteristics lookup for each of them:
           for (let i = 0; i < services.length; i++) {
             const service = services[i];
             if (service.uuid === DATA_SERVICE_UUID) {
-
+              console.log("FOUND THE RIGHT SERVICE! UUID: ", services.uuid);
               service.discoverCharacteristics([], (error, characteristics) => {
                 characteristics.forEach(function (characteristic) {
                   switch (characteristic.uuid) {
