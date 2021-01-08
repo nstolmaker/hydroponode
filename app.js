@@ -21,8 +21,8 @@ const GREENHOUSE_TEMP_MIN = 70;
 const GREENHOUSE_TEMP_MAX = 82;
 const GREENHOUSE_MOISTURE_MIN = 30;
 const GREENHOUSE_LIGHT_MIN = 250;
-const LIGHTS_ON_TIME = 6;
-const LIGHTS_OFF_TIME = 24;
+const LIGHTS_ON_TIME = 8;
+const LIGHTS_OFF_TIME = 22;
 
 // magic numbers
 const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
@@ -360,12 +360,13 @@ class Lights {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     };
 
-    const lightsShouldBeOn = ((LOCALTIME.hour > LIGHTS_ON_TIME) || (LOCALTIME.hour < LIGHTS_OFF_TIME));
-    const lightsShouldBeOff = ((LOCALTIME.hour > LIGHTS_OFF_TIME) || (LOCALTIME.hour < LIGHTS_ON_TIME));
+    const lightsShouldBeOn = ((LOCALTIME.hour >= LIGHTS_ON_TIME) && (LOCALTIME.hour < LIGHTS_OFF_TIME));
+    const lightsShouldBeOff = ((LOCALTIME.hour >= LIGHTS_OFF_TIME)); // && (LOCALTIME.hour <= LIGHTS_ON_TIME));
     if (lightsShouldBeOn) {
       // console.log("Lights should be on");
       this.switchOn();
     } else if (lightsShouldBeOff) {
+      // console.log("lights should be off")
       this.switchOff();
     }
   };
