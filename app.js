@@ -1,3 +1,4 @@
+const throttle = require('lodash/throttle');
 const { exec } = require("child_process");
 const noble = require('@abandonware/noble');
 const fs = require('fs');
@@ -13,6 +14,7 @@ const INTERVAL_CONST = 500;
 const TIMEOUT_CONST = 5000; // how long to wait before retrying for: "Peripheral Discovery"
 const RECONNECT_TIMEOUT_CONST = 11000;  // how long to wait before retrying for: "connect" and "data received".
 const TIMEOUT = 'Timeout';  // enum
+const THROTTLE_SWITCH_TIME = 1000 * 10; // only flick switches once per minute
 
 // GREENHOUSE target values
 const GREENHOUSE_TEMP_MIN = 70;
@@ -127,7 +129,7 @@ class sensorController {
           resolve(this.sensor.peripheral);
           return true;
         } else if ((new Date().getTime() - startTime) > TIMEOUT_CONST) {
-          console.log("⌛️ Peripheral Discovery Timeout. Restarting...");
+          console.log("\n⌛️ Peripheral Discovery Timeout. Restarting...");
           clearInterval(pollInterval);
           reject(TIMEOUT);
           return false;
@@ -226,7 +228,7 @@ class sensorController {
         this.findServices();
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
-          console.log("⌛️ Connection request timed out. Restarting...");
+          console.log("\n⌛️ Connection request timed out. Restarting...");
           openConnection();
           return false;
         } else {
@@ -323,7 +325,7 @@ const promiseWithTimeout = (timeoutMs, promise, failureMessage) => {
 
 /* CONTROL THE LIGHTS! */
 class Lights {
-  switchOff() {
+  switchOff = throttle(function() {
     console.log("💡⬇️ Turning off switch")
     exec("./tplink_smartplug.py -t "+LIGHTS_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
       if (error) {
@@ -336,8 +338,8 @@ class Lights {
       }
       // console.log(`stdout: ${stdout}`);
     });    
-  }
-  switchOn() {
+  }, THROTTLE_SWITCH_TIME);
+  switchOn = throttle(function() {
     console.log("💡⬆️ Turning on switch")
     exec("./tplink_smartplug.py -t "+LIGHTS_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
       if (error) {
@@ -350,7 +352,7 @@ class Lights {
       }
       // console.log(`stdout: ${stdout}`);
     });    
-  }
+  }, THROTTLE_SWITCH_TIME);
   manageLights(lux) {
     let LOCALTIME = { 
       hour: (new Date()).getHours(),
@@ -361,10 +363,9 @@ class Lights {
     const lightsShouldBeOn = ((LOCALTIME.hour > LIGHTS_ON_TIME) || (LOCALTIME.hour < LIGHTS_OFF_TIME));
     const lightsShouldBeOff = ((LOCALTIME.hour > LIGHTS_OFF_TIME) || (LOCALTIME.hour < LIGHTS_ON_TIME));
     if (lightsShouldBeOn) {
-      // debounce
+      // console.log("Lights should be on");
       this.switchOn();
     } else if (lightsShouldBeOff) {
-      // debounce
       this.switchOff();
     }
   };
@@ -373,7 +374,7 @@ class Lights {
 
 /* CONTROL THE HEAT! */
 class Heater {
-  switchOff() {
+  switchOff = throttle(function() {
     console.log("🌡♨️ Turning off switch")
     exec("./tplink_smartplug.py -t "+HEATER_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
       if (error) {
@@ -386,8 +387,8 @@ class Heater {
       }
       // console.log(`stdout: ${stdout}`);
     });    
-  }
-  switchOn() {
+  }, THROTTLE_SWITCH_TIME);
+  switchOn = throttle(function() {
     console.log("🌡❄️ Turning on switch")
     exec("./tplink_smartplug.py -t "+HEATER_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
       if (error) {
@@ -400,7 +401,7 @@ class Heater {
       }
       // console.log(`stdout: ${stdout}`);
     });    
-  }
+  }, THROTTLE_SWITCH_TIME);
   manageHeat(temperature) {
     const itsTooHot = temperature > GREENHOUSE_TEMP_MAX;
     const itsTooCold = temperature < GREENHOUSE_TEMP_MIN;
@@ -408,7 +409,6 @@ class Heater {
     const itsWayTooHot = temperature > (GREENHOUSE_TEMP_MIN + 10);
 
     if (itsTooHot) {
-      // add lodash and use _.debounce so that this only happens once every mintue or so.
       this.switchOff();
     } else if (itsTooCold) {
       this.switchOn();
