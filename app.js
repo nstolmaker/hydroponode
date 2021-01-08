@@ -252,25 +252,25 @@ class sensorController {
 
   findServices() {
     console.log("findServices called");
-    const peripheral = this.sensor.peripheral;
+    // this.sensor.uuid = this.sensor.peripheral.uuid;
+    // this.sensor.address = this.sensor.peripheral.address;
+    // this.sensor.name = this.sensor.peripheral.advertisement.localName; // not needed but nice to have
     let sensor = this.sensor;
-    sensor.uuid = peripheral.uuid;
-    sensor.address = peripheral.address;
-    sensor.name = peripheral.advertisement.localName; // not needed but nice to have
     sensor.characteristics = {};
-    sensor.peripheral = peripheral;
-    sensor.device.name = peripheral.advertisement.localName;
-    sensor.device.device_id = peripheral.id;
+    // sensor.peripheral = this.sensor.peripheral;
+    // this.sensor.peripheral = peripheral;
+    // this.sensor.device.name = this.sensor.peripheral.advertisement.localName;
+    // this.sensor.device.device_id = this.sensor.peripheral.id;
     const waitForServices = () => new Promise((resolve, reject) => {
-      try {
-        sensor.peripheral.discoverServices([], (error, services) => {
+        this.sensor.peripheral.discoverServices([], (error, services) => {
+          console.log("services discovered", services);
           if (error) console.log("There was an error in discoverServices: ", error);
           // we found the list of services, now trigger characteristics lookup for each of them:
           for (let i = 0; i < services.length; i++) {
             const service = services[i];
             if (service.uuid === DATA_SERVICE_UUID) {
 
-              service.discoverCharacteristics([], function (error, characteristics) {
+              service.discoverCharacteristics([], (error, characteristics) => {
                 characteristics.forEach(function (characteristic) {
                   switch (characteristic.uuid) {
                       case DATA_CHARACTERISTIC_UUID:
@@ -291,7 +291,7 @@ class sensorController {
                           });
                           break;
                       case REALTIME_CHARACTERISTIC_UUID:
-                          console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${peripheral.id}.`);
+                          console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${sensor.characteristics[characteristic.uuid]}.`);
                           sensor.characteristics[characteristic.uuid] = characteristic;
                           sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
                           resolve(true);
@@ -308,10 +308,10 @@ class sensorController {
           }
         // resolve(true);
         });
-      } catch(err) {
-        console.log("waitForServices threw an error: ", err);
-        reject('Unknown Error in waitForServices'+err);
-      }
+      // } catch(err) {
+      //   console.log("waitForServices threw an error: ", err);
+      //   reject('Unknown Error in waitForServices'+err);
+      // }
     });
 
     const openServices = () => {
@@ -322,7 +322,7 @@ class sensorController {
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
           console.log("\n⌛️ openServices request timed out. Restarting...");
-          openServices();
+          this.connectToDevice();
           return false;
         } else {
           console.log("Error connecting: ", reason);
