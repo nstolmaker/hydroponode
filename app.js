@@ -279,6 +279,7 @@ class sensorController {
                           console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
                           sensor.characteristics[characteristic.uuid] = characteristic;
                           sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
+                            console.log('received data: ', data);
                             sensor.receiveData(data);
                           });
                           sensor.requestData();
@@ -293,7 +294,7 @@ class sensorController {
                           });
                           break;
                       case REALTIME_CHARACTERISTIC_UUID:
-                          console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${sensor.characteristics[characteristic.uuid]}.`);
+                          console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${characteristic.uuid}.`);
                           sensor.characteristics[characteristic.uuid] = characteristic;
                           sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
                           resolve(true);
