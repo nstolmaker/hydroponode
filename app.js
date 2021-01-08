@@ -294,6 +294,7 @@ class sensorController {
                           console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${peripheral.id}.`);
                           sensor.characteristics[characteristic.uuid] = characteristic;
                           sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
+                          resolve(true);
                           // sensor.characteristic.notify(true);
                           // sensor.characteristic.subscribe(sensor.receiveData);
                           break;
@@ -305,7 +306,7 @@ class sensorController {
             
           }
           }
-        resolve(true);
+        // resolve(true);
         });
       } catch(err) {
         console.log("waitForServices threw an error: ", err);
