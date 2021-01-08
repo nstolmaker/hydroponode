@@ -297,7 +297,7 @@ class sensorController {
                           console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${characteristic.uuid}.`);
                           sensor.characteristics[characteristic.uuid] = characteristic;
                           sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
-                          resolve(true);
+                          // resolve(true);
                           // sensor.characteristic.notify(true);
                           // sensor.characteristic.subscribe(sensor.receiveData);
                           break;
