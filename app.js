@@ -247,23 +247,23 @@ class sensorController {
         console.warn("Unknown error in connectToDevice: ", err);
       }
     
-  };
+  }
 
 
   findServices() {
     console.log("findServices called");
-    // this.sensor.uuid = this.sensor.peripheral.uuid;
-    // this.sensor.address = this.sensor.peripheral.address;
-    // this.sensor.name = this.sensor.peripheral.advertisement.localName; // not needed but nice to have
-    let sensor = this.sensor;
+    const myPeripheral = this.sensor.peripheral;
+    sensor.uuid = myPeripheral.uuid;
+    sensor.address = myPeripheral.address;
+    sensor.name = myPeripheral.advertisement.localName; // not needed but nice to have
     sensor.characteristics = {};
-    // sensor.peripheral = this.sensor.peripheral;
-    // this.sensor.peripheral = peripheral;
-    // this.sensor.device.name = this.sensor.peripheral.advertisement.localName;
-    // this.sensor.device.device_id = this.sensor.peripheral.id;
+    sensor.peripheral = myPeripheral;
+    sensor.device.name = myPeripheral.advertisement.localName;
+    sensor.device.device_id = myPeripheral.id;
+  
     const waitForServices = () => new Promise((resolve, reject) => {
         sensor.peripheral.discoverServices([], (error, services) => {
-          console.log("services discovered", services);
+          // console.log("services discovered", services);
           let foundTheServiceWeWereLookingFor = false;
           if (error) console.log("There was an error in discoverServices: ", error);
           // we found the list of services, now trigger characteristics lookup for each of them:
