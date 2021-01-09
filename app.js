@@ -269,7 +269,7 @@ class sensorController {
   
     const waitForServices = () => new Promise((resolve, reject) => {
         sensor.peripheral.discoverServices([], (error, services) => {
-          // console.log("services discovered", services);
+          console.log("🚚 Services discovered");
           let foundTheServiceWeWereLookingFor = false;
           if (error) console.log("There was an error in discoverServices: ", error);
           // we found the list of services, now trigger characteristics lookup for each of them:
@@ -277,14 +277,14 @@ class sensorController {
             const service = services[i];
             if (service.uuid === DATA_SERVICE_UUID) {
               foundTheServiceWeWereLookingFor = true;
-              console.log("FOUND THE RIGHT SERVICE! UUID: ", service.uuid);
+              // console.log("FOUND THE RIGHT SERVICE! UUID: ", service.uuid);
               sensor.service = service;
-              // console.log("Set sensor.service to service: ", service);
               resolve(service);
           }
           }
-          console.log("Finished looping services. Did we find the one we wanted? ", foundTheServiceWeWereLookingFor);
-        // resolve(true);
+          if (!foundTheServiceWeWereLookingFor) {
+            reject('Rejecting inside waitForServices because foundTheServiceWeWereLookingFor returned false');
+          }
         });
       // } catch(err) {
       //   console.log("waitForServices threw an error: ", err);
@@ -338,10 +338,10 @@ class sensorController {
     let service = sensor.service;
     const waitForCharacteristics = async function() {
       // return new Promise((resolve, reject) => {
-      // console.log("calling service.discoverCharacteristics() on service: ", service);
+      console.log("waitForCharacteristics: calling service.discoverCharacteristics() on service.");
       const characteristicsPromise = service.discoverCharacteristicsAsync();
       await characteristicsPromise.then((characteristics)=>{
-        // console.log("discoverCharacteristicsAsync returned with val ", characteristics);
+        console.log("discoverCharacteristicsAsync returned with val ", characteristics);
       // service.discoverCharacteristics([], (error, characteristics) => {
         characteristics.forEach((characteristic) => {
           switch (characteristic.uuid) {
