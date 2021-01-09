@@ -328,7 +328,7 @@ class sensorController {
   async findCharacteristics() {
     let service = sensor.service;
     let foundSubscribableDataCharacteristic = 0;
-    const waitForCharacteristics = async function() {
+    const waitForCharacteristics = async ()=> {
       // return new Promise((resolve, reject) => {
       console.log("waitForCharacteristics: calling service.discoverCharacteristics() on service.");
       const characteristicsPromise = service.discoverCharacteristicsAsync();
@@ -371,9 +371,9 @@ class sensorController {
                 console.log('Found characteristic uuid %s but not matched the criteria', characteristic.uuid);
           }
         });
-        if (!foundSubscribableDataCharacteristic) {
-          console.log("Critical Failure in waitForCharacteristics. Didn't find a subscribable data characteristics. Probably should start over. Gonna try just calling findCharacteristics() again:");
-          findCharacteristics();
+        if (foundSubscribableDataCharacteristic < 2) {
+          console.log("Critical Failure in waitForCharacteristics. Didn't find a subscribable data characteristics. Probably should start over. Gonna try just calling this.findCharacteristics() again:");
+          this.findCharacteristics();
         }
       }).catch((errorReason)=>{
         console.log("discoverCharacteristicsAsync threw an unknown error: ", errorReason);
