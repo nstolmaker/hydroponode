@@ -327,7 +327,7 @@ class sensorController {
   // static async 
   async findCharacteristics() {
     let service = sensor.service;
-    let foundSubscribableDataCharacteristic = false;
+    let foundSubscribableDataCharacteristic = 0;
     const waitForCharacteristics = async function() {
       // return new Promise((resolve, reject) => {
       console.log("waitForCharacteristics: calling service.discoverCharacteristics() on service.");
@@ -340,7 +340,7 @@ class sensorController {
             case DATA_CHARACTERISTIC_UUID:
                 // console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
                 sensor.characteristics[characteristic.uuid] = characteristic;
-                foundSubscribableDataCharacteristic = true;
+                foundSubscribableDataCharacteristic++;
                 // clear listeners previously created, otherwise we end up with one for every time we call this function
                 sensor.characteristics[characteristic.uuid].removeAllListeners('data');
                 sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
@@ -362,6 +362,7 @@ class sensorController {
                 console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${characteristic.uuid}.`);
                 sensor.characteristics[characteristic.uuid] = characteristic;
                 sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
+                foundSubscribableDataCharacteristic++;
                 // resolve(true);
                 // sensor.characteristic.notify(true);
                 // sensor.characteristic.subscribe(sensor.receiveData);
