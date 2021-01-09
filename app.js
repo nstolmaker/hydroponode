@@ -288,7 +288,8 @@ class sensorController {
           }
           }
           if (!foundTheServiceWeWereLookingFor) {
-            reject('Rejecting inside waitForServices because foundTheServiceWeWereLookingFor returned false');
+            console.log('Rejecting inside waitForServices because foundTheServiceWeWereLookingFor returned false');
+            reject(TIMEOUT);
           }
         });
       // } catch(err) {
