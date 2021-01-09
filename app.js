@@ -11,7 +11,7 @@ const LIGHTS_IP_ADDRESS = process.env.LIGHTS_IP_ADDRESS || '192.168.0.43';
 
 // used for all the timeouts that we wrap everything with because this is wireless and it'll fail a lot.
 const INTERVAL_CONST = 500;
-const TIMEOUT_CONST = 5000; // how long to wait before retrying for: "Peripheral Discovery"
+const TIMEOUT_CONST = 7000; // how long to wait before retrying for: "Peripheral Discovery"
 const RECONNECT_TIMEOUT_CONST = 11000;  // how long to wait before retrying for: "connect" and "data received".
 const TIMEOUT = 'Timeout';  // enum
 const THROTTLE_SWITCH_TIME = 1000 * 30; // only flick switches once per minute
@@ -74,7 +74,11 @@ class sensorReader {
       // this.requestData();
     // });
     // sensor.characteristics[DATA_CHARACTERISTIC_UUID].read();
-    sensor.characteristics[DATA_CHARACTERISTIC_UUID].subscribe();
+    if (sensor && sensor.characteristics && sensor.characteristics[DATA_CHARACTERISTIC_UUID]) {
+      sensor.characteristics[DATA_CHARACTERISTIC_UUID].subscribe();
+    } else {
+      console.warn("sensor.requestData was called, but sensor?.characteristics[DATA_CHARACTERISTIC_UUID] did not return truthy. Something is wrong. Hopefully we'll recover. If you keep seeing data then it's probably fine.");
+    }
   }
   receiveData(data) {
     // console.log("receiveData called with data", data);
@@ -173,6 +177,7 @@ class sensorController {
       }
     });
 
+    this.noble.removeAllListeners('discover');
     this.noble.on('discover',  (peripheral) => {
       process.stdout.write('.');
       // TODO: this way works on the raspberry pi, but my mac wasnt resolving localname so i did the lookup by UUID. Make it smart and detect.
@@ -328,23 +333,31 @@ class sensorController {
       }
     
   };
-  findCharacteristics() {
+  // static async 
+  async findCharacteristics() {
     let service = sensor.service;
-    const waitForCharacteristics = () => new Promise((resolve, reject) => {
-      service.discoverCharacteristics([], (error, characteristics) => {
-        characteristics.forEach(function (characteristic) {
+    const waitForCharacteristics = async function() {
+      // return new Promise((resolve, reject) => {
+      // console.log("calling service.discoverCharacteristics() on service: ", service);
+      const characteristicsPromise = service.discoverCharacteristicsAsync();
+      await characteristicsPromise.then((characteristics)=>{
+        // console.log("discoverCharacteristicsAsync returned with val ", characteristics);
+      // service.discoverCharacteristics([], (error, characteristics) => {
+        characteristics.forEach((characteristic) => {
           switch (characteristic.uuid) {
             case DATA_CHARACTERISTIC_UUID:
-                console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
+                // console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
                 sensor.characteristics[characteristic.uuid] = characteristic;
+                // clear listeners previously created, otherwise we end up with one for every time we call this function
+                sensor.characteristics[characteristic.uuid].removeAllListeners('data');
                 sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
-                  console.log('received data: ', data);
+                  // console.log('received data: ', data);
                   sensor.receiveData(data);
                 });
                 sensor.requestData();
                 break;
             case FIRMWARE_CHARACTERISTIC_UUID:
-              console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
+              // console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
                 sensor.characteristics[characteristic.uuid] = characteristic;
                 sensor.characteristics[characteristic.uuid].read(function (error, data) {
                     const res = sensor.parse_firmware(data);
@@ -364,14 +377,16 @@ class sensorController {
                 console.log('Found characteristic uuid %s but not matched the criteria', characteristic.uuid);
           }
         });
+      }).catch((errorReason)=>{
+        console.log("discoverCharacteristicsAsync threw an unknown error: ", errorReason);
       });
-    });
-
-    const openCharacteristics = ()=> {
+    // });
+    return waitForCharacteristics;
+    }
+    const openCharacteristics = async ()=> {
       return promiseWithTimeout(RECONNECT_TIMEOUT_CONST, waitForCharacteristics, TIMEOUT)
-      .then((resolveVal) => {
-        console.log("OpenCharacteristics resolved with val: ", resolveVal);
-        console.log("Probably wait and then ask for more data again?")
+      .then((empty) => {
+        console.log("waitForCharacteristics returned successfully. empty:", empty);
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
           console.log("\n⌛️ waitForCharacteristics request timed out. Calling openCharacteristics again...");
@@ -385,12 +400,15 @@ class sensorController {
     }
 
     try {
-      const characteristicsResponse = openCharacteristics();
-      characteristicsResponse.catch((reason) => console.log("Unexpected error in characteristicsResponse: ", reason));
+      // const characteristicsResponse = 
+      console.log("Got to teh return statement part here");
+      const characteristicsResponse = await openCharacteristics();
+      return characteristicsResponse;
+      // characteristicsResponse.catch((reason) => console.log("Unexpected error in characteristicsResponse: ", reason));
     } catch(err) {
       console.warn("Unknown error in characteristicsResponse: ", err);
     }
-  }
+  };
 }
 
 
@@ -496,7 +514,7 @@ class Heater {
     const itsTooHot = temperature > GREENHOUSE_TEMP_MAX;
     const itsTooCold = temperature < GREENHOUSE_TEMP_MIN;
     const itsWayTooCold = temperature < (GREENHOUSE_TEMP_MIN - 10);
-    const itsWayTooHot = temperature > (GREENHOUSE_TEMP_MIN + 10);
+    const itsWayTooHot = temperature > (GREENHOUSE_TEMP_MAX + 10);
 
     if (itsTooHot) {
       this.switchOff();
