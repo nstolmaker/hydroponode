@@ -146,6 +146,7 @@ class sensorController {
   };
 
   register() {
+    // this.noble.removeAllListeners('stateChange');
     this.noble.on('stateChange', (state) => {
       if (state === 'poweredOn') {
         const findPeripheral = () => {
@@ -206,6 +207,10 @@ class sensorController {
     */
     const waitForConnection = () => new Promise((resolve, reject) => {
       try {
+        if (this.sensor.peripheral.state === 'connected') {
+          console.log({'Seems to be already connected: ':this.sensor.peripheral.state});
+          console.log({noble});
+        }
         this.sensor.peripheral.connect((error) => {
           if (error) {
             console.log(`☢️ Connect error: ${error}`);
@@ -341,7 +346,7 @@ class sensorController {
       console.log("waitForCharacteristics: calling service.discoverCharacteristics() on service.");
       const characteristicsPromise = service.discoverCharacteristicsAsync();
       await characteristicsPromise.then((characteristics)=>{
-        console.log("discoverCharacteristicsAsync returned with val ", characteristics);
+        console.log("discoverCharacteristicsAsync returned"); //  with val ", characteristics);
       // service.discoverCharacteristics([], (error, characteristics) => {
         characteristics.forEach((characteristic) => {
           switch (characteristic.uuid) {
@@ -381,14 +386,12 @@ class sensorController {
         console.log("discoverCharacteristicsAsync threw an unknown error: ", errorReason);
       });
     // });
-    return characteristics;
+    return sensor.characteristics;
     }
     const openCharacteristics = async ()=> {
       return promiseWithTimeout(RECONNECT_TIMEOUT_CONST, waitForCharacteristics, TIMEOUT)
-      .then(async (empty) => {
-        console.log("waitForCharacteristics returned successfully. empty:", empty);
-        await empty;
-        console.log("empty seems to be getting resolved. value of empty is: ", empty);
+      .then(async (characteristics) => {
+        console.log("waitForCharacteristics returned successfully. characteristics:", characteristics);
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
           console.log("\n⌛️ waitForCharacteristics request timed out. Calling openCharacteristics again...");
@@ -537,11 +540,7 @@ mySensorController.sensor.controller = mySensorController;
 mySensorController.lights = lights;
 mySensorController.heater = heater;
 
-console.log('device time is: ', { 
-  hour: (new Date()).getHours(),
-  minutes: (new Date()).getMinutes(),
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-});
+console.log('The time is: '+(new Date()).getHours()+":"+(new Date()).getMinutes()+" " +Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 const sendNotification = (message) => {
   console.warn("🚨 "+message);
