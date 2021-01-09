@@ -315,7 +315,7 @@ class sensorController {
           */
          // TODO: Change this to openServices again, or connectToDevice. Might have to reset some stuff though.
           // sensor.characteristics[REALTIME_CHARACTERISTIC_UUID].write(REALTIME_META_VALUE, false);
-          sensor.requestData();
+          this.openServices();
           return false;
         } else {
           console.log("Error connecting: ", reason);
@@ -381,12 +381,14 @@ class sensorController {
         console.log("discoverCharacteristicsAsync threw an unknown error: ", errorReason);
       });
     // });
-    return waitForCharacteristics;
+    return characteristics;
     }
     const openCharacteristics = async ()=> {
       return promiseWithTimeout(RECONNECT_TIMEOUT_CONST, waitForCharacteristics, TIMEOUT)
-      .then((empty) => {
+      .then(async (empty) => {
         console.log("waitForCharacteristics returned successfully. empty:", empty);
+        await empty;
+        console.log("empty seems to be getting resolved. value of empty is: ", empty);
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
           console.log("\n⌛️ waitForCharacteristics request timed out. Calling openCharacteristics again...");
