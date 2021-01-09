@@ -327,6 +327,7 @@ class sensorController {
   // static async 
   async findCharacteristics() {
     let service = sensor.service;
+    let foundSubscribableDataCharacteristic = false;
     const waitForCharacteristics = async function() {
       // return new Promise((resolve, reject) => {
       console.log("waitForCharacteristics: calling service.discoverCharacteristics() on service.");
@@ -339,6 +340,7 @@ class sensorController {
             case DATA_CHARACTERISTIC_UUID:
                 // console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
                 sensor.characteristics[characteristic.uuid] = characteristic;
+                foundSubscribableDataCharacteristic = true;
                 // clear listeners previously created, otherwise we end up with one for every time we call this function
                 sensor.characteristics[characteristic.uuid].removeAllListeners('data');
                 sensor.characteristics[characteristic.uuid].on('data', (data, isNotification) => {
@@ -368,6 +370,10 @@ class sensorController {
                 console.log('Found characteristic uuid %s but not matched the criteria', characteristic.uuid);
           }
         });
+        if (!foundSubscribableDataCharacteristic) {
+          console.log("Critical Failure in waitForCharacteristics. Didn't find a subscribable data characteristics. Probably should start over. Gonna try just calling findCharacteristics() again:");
+          findCharacteristics();
+        }
       }).catch((errorReason)=>{
         console.log("discoverCharacteristicsAsync threw an unknown error: ", errorReason);
       });
