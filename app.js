@@ -304,8 +304,8 @@ class sensorController {
         this.findCharacteristics();
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
-          console.log("\n⌛️ WaitForServices request timed out. Calling findServices() again...");
-          findServices();
+          console.log("\n⌛️ WaitForServices request timed out. Calling connectToDevice() again...");
+          this.connectToDevice();
           return false;
         } else {
           console.log("Error connecting: ", reason);
