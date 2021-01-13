@@ -210,6 +210,7 @@ class sensorController {
         if (this.sensor.peripheral.state === 'connected') {
           console.log({'Seems to be already connected: ':this.sensor.peripheral.state});
           console.log({noble});
+          this.sensor.peripheral.disconnect();
         }
         this.sensor.peripheral.connect((error) => {
           if (error) {
