@@ -328,7 +328,7 @@ class sensorController {
   async findCharacteristics() {
     let service = sensor.service;
     let foundSubscribableDataCharacteristic = 0;
-    const waitForCharacteristics = async function() {
+    const waitForCharacteristics = async ()=> {
       // return new Promise((resolve, reject) => {
       console.log("waitForCharacteristics: calling service.discoverCharacteristics() on service.");
       const characteristicsPromise = service.discoverCharacteristicsAsync();
