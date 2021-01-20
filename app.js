@@ -22,8 +22,8 @@ const GREENHOUSE_TEMP_MIN = 70;
 const GREENHOUSE_TEMP_MAX = 82;
 const GREENHOUSE_MOISTURE_MIN = 30;
 const GREENHOUSE_LIGHT_MIN = 250;
-let LIGHTS_ON_TIME = 19;
-let LIGHTS_OFF_TIME = 20;
+let LIGHTS_ON_TIME = 9;
+let LIGHTS_OFF_TIME = 21;
 
 // magic numbers
 const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
@@ -219,9 +219,10 @@ class sensorController {
             noble.startScanning([], true);
             reject('error connecting: '+error);
             return;
+          } else {
+            process.stdout.write('\r🔗 Connected!\n');
+            resolve(true);
           }
-          process.stdout.write('\r🔗 Connected!\n');
-          resolve(true);
         });
       } catch(err) {
         console.log("waitForConnection threw an error: ", err);
@@ -287,7 +288,7 @@ class sensorController {
               // console.log("FOUND THE RIGHT SERVICE! UUID: ", service.uuid);
               sensor.service = service;
               resolve(service);
-          }
+            }
           }
           if (!foundTheServiceWeWereLookingFor) {
             console.log('Rejecting inside waitForServices because foundTheServiceWeWereLookingFor returned false');
