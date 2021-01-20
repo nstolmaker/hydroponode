@@ -1,4 +1,5 @@
 const throttle = require('lodash/throttle');
+const { DateTime, Interval } = require("luxon");
 const { exec } = require("child_process");
 const noble = require('@abandonware/noble');
 const fs = require('fs');
@@ -21,8 +22,8 @@ const GREENHOUSE_TEMP_MIN = 70;
 const GREENHOUSE_TEMP_MAX = 82;
 const GREENHOUSE_MOISTURE_MIN = 30;
 const GREENHOUSE_LIGHT_MIN = 250;
-const LIGHTS_ON_TIME = 8;
-const LIGHTS_OFF_TIME = 22;
+let LIGHTS_ON_TIME = 8;
+let LIGHTS_OFF_TIME = 22;
 
 // magic numbers
 const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
@@ -94,7 +95,7 @@ class sensorReader {
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
-    mySensorController.autoRescan();
+    // mySensorController.autoRescan();
   }
   parse_firmware(data) {
     return {
@@ -115,14 +116,14 @@ class sensorController {
     this.heater;
     this.register();
   }
-  autoRescan() {
-    if (this.waiters) {
-      clearTimeout(this.waiters);
-    }
-    this.waiters = setTimeout(() => {
-      this.connectToDevice(this.sensor.peripheral);
-    }, RECONNECT_TIMEOUT_CONST);
-  }
+  // autoRescan() {
+  //   if (this.waiters) {
+  //     clearTimeout(this.waiters);
+  //   }
+  //   this.waiters = setTimeout(() => {
+  //     this.connectToDevice(this.sensor.peripheral);
+  //   }, RECONNECT_TIMEOUT_CONST);
+  // }
 
   // this function just runs itself every INTERVAL_CONST, and then after TIMEOUT_CONST time, it'll reject.
   watchForPeripheralFound = () => {
@@ -200,7 +201,7 @@ class sensorController {
   }
 
 
-  connectToDevice() {
+  connectToDevice = throttle(() => {
     /* 
       waitForConnection is a function that creates a new promise, and then issues a connect command on the peripheral
       it resolves on success. on failure it rejects with an error message that wont be seen.
@@ -259,7 +260,7 @@ class sensorController {
         console.warn("Unknown error in connectToDevice: ", err);
       }
     
-  }
+  }, THROTTLE_SWITCH_TIME);
 
 
   findServices() {
@@ -439,6 +440,10 @@ const promiseWithTimeout = (timeoutMs, promise, failureMessage) => {
 
 /* CONTROL THE LIGHTS! */
 class Lights {
+  constructor() {
+    // if stopTime < startTime then they mean that time in the AM *tomorrow*. The luxon library will handle the date math for us, so just add 24 hours.
+    if (LIGHTS_OFF_TIME < LIGHTS_ON_TIME) LIGHTS_OFF_TIME +=24;
+  }
   switchOff = throttle(function() {
     console.log("💡⬇️ Turning off switch")
     exec("./tplink_smartplug.py -t "+LIGHTS_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
@@ -468,20 +473,17 @@ class Lights {
     });    
   }, THROTTLE_SWITCH_TIME);
   manageLights(lux) {
-    let LOCALTIME = { 
-      hour: (new Date()).getHours(),
-      minutes: (new Date()).getMinutes(),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-    };
+    const startTimeDT = DateTime.local().startOf("day").plus({hours: LIGHTS_ON_TIME});
+    const stopTimeDT = DateTime.local().startOf("day").plus({hours: LIGHTS_OFF_TIME});
+    const onInterval = Interval.fromDateTimes(startTimeDT, stopTimeDT);
+    const currentTimeDT = DateTime.local();
+    const onOrOff = onInterval.contains(currentTimeDT);
 
-    const lightsShouldBeOn = ((LOCALTIME.hour >= LIGHTS_ON_TIME) && (LOCALTIME.hour < LIGHTS_OFF_TIME));
-    // TODO This is wrong. i'm sure there's some code somewhere that does it better.
-    const lightsShouldBeOff = ((LOCALTIME.hour >= LIGHTS_OFF_TIME) || (LOCALTIME.hour <= LIGHTS_ON_TIME));
-    if (lightsShouldBeOn) {
-      // console.log("Lights should be on");
+    if (onOrOff) {
+      console.log("Lights should be on");
       this.switchOn();
-    } else if (lightsShouldBeOff) {
-      // console.log("lights should be off")
+    } else {
+      console.log("lights should be off")
       this.switchOff();
     }
   };
