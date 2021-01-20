@@ -22,8 +22,8 @@ const GREENHOUSE_TEMP_MIN = 70;
 const GREENHOUSE_TEMP_MAX = 82;
 const GREENHOUSE_MOISTURE_MIN = 30;
 const GREENHOUSE_LIGHT_MIN = 250;
-let LIGHTS_ON_TIME = 8;
-let LIGHTS_OFF_TIME = 22;
+let LIGHTS_ON_TIME = 19;
+let LIGHTS_OFF_TIME = 20;
 
 // magic numbers
 const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
@@ -95,7 +95,7 @@ class sensorReader {
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
-    // mySensorController.autoRescan();
+    mySensorController.autoRescan();
   }
   parse_firmware(data) {
     return {
@@ -116,14 +116,14 @@ class sensorController {
     this.heater;
     this.register();
   }
-  // autoRescan() {
-  //   if (this.waiters) {
-  //     clearTimeout(this.waiters);
-  //   }
-  //   this.waiters = setTimeout(() => {
-  //     this.connectToDevice(this.sensor.peripheral);
-  //   }, RECONNECT_TIMEOUT_CONST);
-  // }
+  autoRescan() {
+    if (this.waiters) {
+      clearTimeout(this.waiters);
+    }
+    this.waiters = setTimeout(() => {
+      this.connectToDevice(this.sensor.peripheral);
+    }, RECONNECT_TIMEOUT_CONST);
+  }
 
   // this function just runs itself every INTERVAL_CONST, and then after TIMEOUT_CONST time, it'll reject.
   watchForPeripheralFound = () => {
@@ -308,7 +308,7 @@ class sensorController {
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
           console.log("\n⌛️ WaitForServices request timed out. Calling connectToDevice() again...");
-          this.connectToDevice();
+          this.autoRescan();
           return false;
         } else {
           console.log("Error connecting: ", reason);
