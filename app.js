@@ -201,7 +201,7 @@ class sensorController {
   }
 
 
-  connectToDevice = throttle(() => {
+  connectToDevice() {
     /* 
       waitForConnection is a function that creates a new promise, and then issues a connect command on the peripheral
       it resolves on success. on failure it rejects with an error message that wont be seen.
@@ -260,7 +260,7 @@ class sensorController {
         console.warn("Unknown error in connectToDevice: ", err);
       }
     
-  }, THROTTLE_SWITCH_TIME);
+  }
 
 
   findServices() {
@@ -378,12 +378,11 @@ class sensorController {
           console.log("Critical Failure in waitForCharacteristics. Didn't find a subscribable data characteristics. Probably should start over. Gonna try just calling findCharacteristics() again:");
 		console.log("the state of the service right now is probably disconnected");
 		if (sensor && sensor.peripheral.state === 'connected') {
-		  console.log({'Seems to be already connected. Running findCharacteristics. State is:: ':sensor.peripheral.state});
-		  sensor.findCharacteristics();
-		  // console.log({'sensor':sensor});
-        	} else {
+		  console.log({'Seems to be already connected. Running this.findCharacteristics. State is:: ':sensor.peripheral.state});
+		  this.findCharacteristics();
+    } else {
 		  console.log("not connected. state is: ", sensor ? sensor.peripheral.state : 'sensor undefined', ". Reconnecting to device");
-		  sensor.connectToDevice();
+		  this.connectToDevice();
 		}
         }
       }).catch((errorReason)=>{
@@ -480,10 +479,10 @@ class Lights {
     const onOrOff = onInterval.contains(currentTimeDT);
 
     if (onOrOff) {
-      console.log("Lights should be on");
+      // console.log("Lights should be on");
       this.switchOn();
     } else {
-      console.log("lights should be off")
+      // console.log("lights should be off")
       this.switchOff();
     }
   };
