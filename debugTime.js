@@ -17,52 +17,21 @@ const onInterval = Interval.fromDateTimes(startTimeDT, stopTimeDT)
 
 
     let shouldBeOff = (pretendHour = null)=> {
-      let LOCALTIME = { 
-        hours: (new Date()).getHours(),
-        aHours: null,
-        minutes: (new Date()).getMinutes(),
-        aMinutes: null,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-      };
+      let currentTimeDT = DateTime.local();
+      // console.log({currentTimeDT})
 
       if (pretendHour) {
-        LOCALTIME.hours = pretendHour;
+        // currentTimeDT.hours = pretendHour;
+        // console.log("currentTimeDT before:", currentTimeDT.hour);
+        currentTimeDT = currentTimeDT.set({hour: pretendHour});
+        // console.log("currentTimeDT after:", currentTimeDT.hour);
       }
 
-
-      let startOffset = startTime;
-      let adjustedStartTime = startTime - startOffset; // should always be 0
-      let adjustedStopTime = stopTime - startTime;
-
-      // console.log("adjustedStartTime is: ", adjustedStartTime);
-      // console.log("adjustedStopTime is: ", adjustedStopTime);
-      let startIt = (LOCALTIME.hours - startOffset) < adjustedStartTime ? false : true;
-      let stopIt = (LOCALTIME.hours) > stopTime - startOffset ? true : false;
-
-      let r = "Time is: "+LOCALTIME.hours+": ";
-
-      if (startIt) { 
-        r+= "startIt";
-      } else {
-        if (stopIt) {
-          r+= "stopIt";
-        } else {
-          r+="StartIT I GUESS"
-        }
-      }
-
-      // if (startIt) {
-      //   return r+"Should be off";
-      // } else if (stopIt) {
-      //   return r+"Should be on";
-      // } else {
-      //   return r+"donno";
-      // }
-
-      return r;
+      const onOrOff = onInterval.contains(currentTimeDT);
+      return "Should the lights be on at "+pretendHour+"?: "+onOrOff;
     }
 
-    // [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 0].forEach((hour => {
-    //   console.log(shouldBeOff(hour));
-    // }));
-    console.log(shouldBeOff());
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 0].forEach((hour => {
+      console.log(shouldBeOff(hour));
+    }));
+    console.log("Right now it should be: ",shouldBeOff(25));
