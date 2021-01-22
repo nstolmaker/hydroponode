@@ -377,15 +377,16 @@ class sensorController {
 	      console.log("foundSubscribableDataCharacteristic is: ", foundSubscribableDataCharacteristic);
         if (foundSubscribableDataCharacteristic < 2) {
           console.log("Critical Failure in waitForCharacteristics. Didn't find a subscribable data characteristics. Probably should start over. Gonna try just calling findCharacteristics() again:");
-		console.log("the state of the service right now is probably disconnected");
-		if (sensor && sensor.peripheral.state === 'connected') {
-      console.log('Seems to be already connected. Running this.findCharacteristics. State of peripheral is:: ',sensor.peripheral);
-      await sensor.peripheral.disconnect();
-		  this.autoRescan();
-    } else {
-		  console.log("not connected. state is: ", sensor ? sensor.peripheral.state : 'sensor undefined', ". Reconnecting to device");
-		  this.connectToDevice();
-		}
+            console.log("the state of the service right now is probably disconnected");
+            if (sensor && sensor.peripheral.state === 'connected') {
+              console.log('Seems to be already connected. Running this.findCharacteristics. State of peripheral is:: ',sensor.peripheral);
+              sensor.peripheral.disconnect().then(()=> {
+                this.autoRescan();
+              })
+            } else {
+              console.log("not connected. state is: ", sensor ? sensor.peripheral.state : 'sensor undefined', ". Reconnecting to device");
+              this.connectToDevice();
+            }
         }
       }).catch((errorReason)=>{
         console.log("discoverCharacteristicsAsync threw an unknown error: ", errorReason);
