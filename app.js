@@ -404,7 +404,7 @@ class sensorController {
     const openCharacteristics = async ()=> {
       return promiseWithTimeout(RECONNECT_TIMEOUT_CONST, waitForCharacteristics, TIMEOUT)
       .then(async (characteristics) => {
-        console.log("waitForCharacteristics returned successfully. characteristics:", characteristics);
+        //console.log("waitForCharacteristics returned successfully. characteristics:", characteristics);
       }).catch((reason)=>{
         if (reason === TIMEOUT) {
           console.log("\n⌛️ waitForCharacteristics request timed out. Calling openCharacteristics again...");
