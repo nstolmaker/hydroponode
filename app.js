@@ -81,7 +81,7 @@ class sensorReader {
       console.warn("sensor.requestData was called, but sensor?.characteristics[DATA_CHARACTERISTIC_UUID] did not return truthy. Something is wrong. Hopefully we'll recover. If you keep seeing data then it's probably fine.");
     }
   }
-  receiveData(data) {
+  async receiveData(data) {
     // console.log("receiveData called with data", data);
     if (data) {
       var res = this.parse_data(data);
@@ -95,8 +95,14 @@ class sensorReader {
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
-    console.log("receivedData, calling autoRescan. I think this might actually be where the bug is.");
-    mySensorController.autoRescan();
+	console.log("received some data, managed lights and heat. Die. ", Date.now());
+	await sensor.controller.noble.stopScanning();
+	await sensor.peripheral.disconnectAsync();
+	console.log('disconnectAsync finished');
+	process.exit(1);
+
+    // console.log("receivedData, calling autoRescan. I think this might actually be where the bug is.");
+    // mySensorController.autoRescan();
   }
   parse_firmware(data) {
     return {
@@ -548,7 +554,7 @@ mySensorController.sensor.controller = mySensorController;
 mySensorController.lights = lights;
 mySensorController.heater = heater;
 
-console.log('The time is: '+(new Date()).getHours()+":"+(new Date()).getMinutes()+" " +Intl.DateTimeFormat().resolvedOptions().timeZone);
+console.log("[Time is: " + new Date().toLocaleString()+"]");
 
 const sendNotification = (message) => {
   console.warn("🚨 "+message);
