@@ -1,8 +1,9 @@
 {
   "name": "hydroponics",
   "version": "1.0.0",
-  "main": "index.js",
   "license": "MIT",
+  "type": "module",
+  "main": "./app2.js",
   "dependencies": {
     "fs": "^0.0.1-security",
     "lodash": "^4.17.20",

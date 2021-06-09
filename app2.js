@@ -1,0 +1,89 @@
+// dependencies
+import throttle from 'lodash/throttle';
+import { exec } from 'child_process';
+import noble from '@abandonware/noble';
+import fs from 'fs';
+
+
+// custom
+import * as CONSTS from './constants.js'
+import Lights from './Lights.js'
+import Heater from './Heater.js'
+import { promiseWithTimeout, sendNotification } from './utils.js'
+
+
+
+// state machine
+const STATE_MACHINE = {
+  POWERED_ON: 1,
+  SCAN_FOR_PERIPHERALS: 2,
+  PERIPHERALS_RECEIVED: 3,
+  PERIPHERAL_FOUND: 4,
+  SCANNING_FOR_SERVICES: 5,
+  SERVICES_RECEIVED: 6,
+  SERVICE_FOUND: 7,
+  SCANNING_FOR_CHARACTERISTICS: 8,
+  CHARACTERISTICS_RECEIVED: 9 ,
+  CHARACTERISTIC_FOUND: 10,
+  SUBSCRIBING_TO_CHARACTERISTIC: 11,
+  SUBSCRIBED_TO_CHARACTERISTIC: 12,
+  RECEIVING_DATA: 13,
+  connecting: 14,
+  connected: 15
+}
+
+const STATE_MACHINE_LOOKUP = {
+  0: 'DISCONNECTED',
+  1: 'POWERED_ON',
+  2: 'SCAN_FOR_PERIPHERALS',
+  3: 'PERIPHERALS_RECEIVED',
+  4: 'PERIPHERAL_FOUND',
+  5: 'SCANNING_FOR_SERVICES',
+  6: 'SERVICES_RECEIVED',
+  7: 'SERVICE_FOUND',
+  8: 'SCANNING_FOR_CHARACTERISTICS',
+  9: 'CHARACTERISTICS_RECEIVED',
+  10: 'CHARACTERISTIC_FOUND',
+  11: 'SUBSCRIBING_TO_CHARACTERISTIC',
+  12: 'SUBSCRIBED_TO_CHARACTERISTIC',
+  13: 'RECEIVING_DATA',
+  14: 'connecting',
+  15: 'connected'
+}
+
+
+
+class stateMachine {
+  constructor() {
+    this.state = STATE_MACHINE.POWERED_ON;
+    this.lastState = null;
+    this.noble = noble;
+    this.BASE_CALL_STACK = [
+      ['POWERED_ON', STATE_MACHINE.SCAN_FOR_PERIPHERALS],
+      ['SCAN_FOR_PERIPHERALS', STATE_MACHINE.PERIPHERALS_RECEIVED],
+      ['PERIPHERALS_RECEIVED', STATE_MACHINE.PERIPHERAL_FOUND],
+      ['PERIPHERAL_FOUND', STATE_MACHINE.SCANNING_FOR_SERVICES],
+      ['SCANNING_FOR_SERVICES', STATE_MACHINE.SERVICES_RECEIVED],
+      ['SERVICES_RECEIVED', STATE_MACHINE.SERVICE_FOUND],
+      ['SERVICE_FOUND', STATE_MACHINE.SCANNING_FOR_CHARACTERISTICS],
+      ['SCANNING_FOR_CHARACTERISTICS', STATE_MACHINE.SCAN_FOR_PERIPHERALS],
+      ['SCAN_FOR_PERIPHERALS', STATE_MACHINE.CHARACTERISTICS_RECEIVED],
+      ['CHARACTERISTICS_RECEIVED', STATE_MACHINE.CHARACTERISTIC_FOUND],
+      ['CHARACTERISTIC_FOUND', STATE_MACHINE.SUBSCRIBING_TO_CHARACTERISTIC],
+      ['SUBSCRIBING_TO_CHARACTERISTIC', STATE_MACHINE.SUBSCRIBED_TO_CHARACTERISTIC],
+      ['SUBSCRIBED_TO_CHARACTERISTIC', STATE_MACHINE.RECEIVING_DATA],
+      ['CHARACTERISTICS_RECEIVED', STATE_MACHINE.CHARACTERISTIC_FOUND],
+      ['CHARACTERISTICS_RECEIVED', STATE_MACHINE.CHARACTERISTIC_FOUND],
+    ]
+  }
+  *getNextStep(currentStep) {
+    const nextStep = BASE_CALL_STACK(currentStep)[1];
+    console.log("Yielding next step of "+nextStep+' aka ', STATE_MACHINE_LOOKUP[nextStep], " from currentstep="+currentStep)
+    yield nextStep
+  }
+}
+
+console.log('The time is: '+(new Date()).getHours()+":"+(new Date()).getMinutes()+" " +Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+
+
