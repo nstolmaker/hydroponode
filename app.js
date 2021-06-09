@@ -95,6 +95,7 @@ class sensorReader {
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
+    console.log("receivedData, calling autoRescan. I think this might actually be where the bug is.");
     mySensorController.autoRescan();
   }
   parse_firmware(data) {
