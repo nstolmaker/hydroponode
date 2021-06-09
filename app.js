@@ -95,10 +95,10 @@ class sensorReader {
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
-	console.log("received some data, managed lights and heat. Die. ", Date.now());
+	console.log("received some data, managed lights and heat. Die. "); 
 	await sensor.controller.noble.stopScanning();
 	await sensor.peripheral.disconnectAsync();
-	console.log('disconnectAsync finished');
+	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
 	process.exit(1);
 
     // console.log("receivedData, calling autoRescan. I think this might actually be where the bug is.");
@@ -554,7 +554,7 @@ mySensorController.sensor.controller = mySensorController;
 mySensorController.lights = lights;
 mySensorController.heater = heater;
 
-console.log("[Time is: " + new Date().toLocaleString()+"]");
+console.log("[Start Time is: " + new Date().toLocaleString()+"]");
 
 const sendNotification = (message) => {
   console.warn("🚨 "+message);
