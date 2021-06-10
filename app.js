@@ -539,7 +539,9 @@ class Heater {
       this.switchOff();
     } else if (itsTooCold) {
       this.switchOn();
-    } else if (itsWayTooCold || itsWayTooHot) {
+    }
+
+    if (itsWayTooCold || itsWayTooHot) {
       sendNotification("WARNING! TEMPERATURE IS OUT OF BOUNDS. Currently: "+temperature);
     }
   };
