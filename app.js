@@ -565,7 +565,6 @@ class Pump {
   watering = false;
   hydrate = throttle(function() {
     console.log("🌧 Starting Watering @ "+new Date().toLocaleString()+".")
-    /*
     exec("./tplink_smartplug.py -t "+PUMP_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
       if (error) {
           console.log(`error: ${error.message}`);
@@ -577,7 +576,7 @@ class Pump {
       }
       // console.log(`stdout: ${stdout}`);
     });
-    */
+
    this.watering = true;
    let that = this;
     setTimeout(()=> {
