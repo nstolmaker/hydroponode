@@ -605,6 +605,8 @@ class Pump {
 
     if (itsTooDry) {
       this.hydrate();
+    } else {
+      console.log("💧✅ Moisture is at an acceptable level. ");
     }
 
     if (itsWayTooDry) {
