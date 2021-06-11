@@ -22,6 +22,7 @@ const GREENHOUSE_TEMP_MIN = 70;
 const GREENHOUSE_TEMP_MAX = 82;
 const GREENHOUSE_MOISTURE_MIN = 30;
 const GREENHOUSE_LIGHT_MIN = 250;
+const WATERING_DURATION = 6000; // in miliseconds, how long do we run the pump for
 let LIGHTS_ON_TIME = 9;
 let LIGHTS_OFF_TIME = 21;
 
@@ -92,6 +93,8 @@ class sensorReader {
       this.controller.lights.manageLights(this.device.measure.lux);
       // control based on temperature
       this.controller.heater.manageHeat(this.device.measure.temperature);
+      // control based on moisture
+      this.controller.pump.manageWater(this.device.measure.moisture);
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
@@ -99,7 +102,14 @@ class sensorReader {
 	await sensor.controller.noble.stopScanning();
 	await sensor.peripheral.disconnectAsync();
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
-	process.exit(1);
+  async function dontDieWhileWatering() {
+    if (this.controller.pump.watering) {
+      setTimeout(dontDieWhileWatering, 1000)
+    } else {
+      process.exit(1);
+    }
+  }
+  dontDieWhileWatering();
 
     // console.log("receivedData, calling autoRescan. I think this might actually be where the bug is.");
     // mySensorController.autoRescan();
@@ -548,13 +558,70 @@ class Heater {
 }
 
 
+
+/* CONTROL THE Pump! */
+class Pump {
+  watering = false;
+  hydrate = throttle(function() {
+    console.log("🌧 Starting Watering @ "+new Date().toLocaleString()+".")
+    /*
+    exec("./tplink_smartplug.py -t "+PUMP_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
+      if (error) {
+          console.log(`error: ${error.message}`);
+          return;
+      }
+      if (stderr) {
+          console.log(`stderr: ${stderr}`);
+          return;
+      }
+      // console.log(`stdout: ${stdout}`);
+    });
+    */
+   this.watering = true;
+   that = this;
+    setTimeout(()=> {
+      // now wait 6 seconds and then turn it off
+      console.log("🌤 Stopping Watering @ "+new Date().toLocaleString()+".")
+      exec("./tplink_smartplug.py -t "+PUMP_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
+        if (error) {
+            console.log(`error: ${error.message}`);
+            return;
+        }
+        if (stderr) {
+            console.log(`stderr: ${stderr}`);
+            return;
+        }
+        console.log("Done watering. Setting watering to false.");
+        // console.log(`stdout: ${stdout}`);
+        that.watering = false;
+      });
+    }, WATERING_DURATION)  
+  }, THROTTLE_SWITCH_TIME);
+  
+  manageWater(moisture) {
+    const itsTooDry = moisture < GREENHOUSE_MOISTURE_MIN;
+    const itsWayTooDry = moisture < (GREENHOUSE_MOISTURE_MIN - 10);
+
+    if (itsTooDry) {
+      this.hydrate();
+    }
+
+    if (itsWayTooDry) {
+      sendNotification("WARNING! MOISTURE IS OUT OF BOUNDS. Currently: "+moisture);
+    }
+  };
+}
+
+
 let sensor = new sensorReader();
 let lights = new Lights;
 let heater = new Heater;
+let pump = new Pump;
 let mySensorController = new sensorController(sensor);
 mySensorController.sensor.controller = mySensorController;
 mySensorController.lights = lights;
 mySensorController.heater = heater;
+mySensorController.pump = pump;
 
 console.log("[Start Time is: " + new Date().toLocaleString()+"]");
 
