@@ -20,7 +20,7 @@ const THROTTLE_SWITCH_TIME = 1000 * 30; // only flick switches once per minute
 // GREENHOUSE target values
 const GREENHOUSE_TEMP_MIN = 70;
 const GREENHOUSE_TEMP_MAX = 82;
-const GREENHOUSE_MOISTURE_MIN = 30;
+const GREENHOUSE_MOISTURE_MIN = 50;
 const GREENHOUSE_LIGHT_MIN = 250;
 const WATERING_DURATION = 6000; // in miliseconds, how long do we run the pump for
 let LIGHTS_ON_TIME = 9;
@@ -102,7 +102,7 @@ class sensorReader {
 	await sensor.controller.noble.stopScanning();
 	await sensor.peripheral.disconnectAsync();
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
-  const that = this;
+  let that = this;
   async function dontDieWhileWatering() {
     if (that.controller.pump.watering) {
       setTimeout(dontDieWhileWatering, 1000)
@@ -579,7 +579,7 @@ class Pump {
     });
     */
    this.watering = true;
-   that = this;
+   let that = this;
     setTimeout(()=> {
       // now wait 6 seconds and then turn it off
       console.log("🌤 Stopping Watering @ "+new Date().toLocaleString()+".")
