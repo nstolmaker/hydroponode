@@ -102,8 +102,9 @@ class sensorReader {
 	await sensor.controller.noble.stopScanning();
 	await sensor.peripheral.disconnectAsync();
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
+  const that = this;
   async function dontDieWhileWatering() {
-    if (this.controller.pump.watering) {
+    if (that.controller.pump.watering) {
       setTimeout(dontDieWhileWatering, 1000)
     } else {
       process.exit(1);
