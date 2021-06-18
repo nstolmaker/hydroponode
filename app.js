@@ -18,9 +18,9 @@ const TIMEOUT = 'Timeout';  // enum
 const THROTTLE_SWITCH_TIME = 1000 * 30; // only flick switches once per minute
 
 // GREENHOUSE target values
-const GREENHOUSE_TEMP_MIN = 70;
-const GREENHOUSE_TEMP_MAX = 80; // keep this number pretty low, like 10 degrees less than actual max temp, because the probe is pretty low down in the chamber, the temp at the top is about 10 degrees warmer, and thats where the seedlings live.
-const GREENHOUSE_MOISTURE_MIN = 45; // after watering the moisture level drops down to about 48 pretty quickly, but it stays in the high fourties for hours. Need to experiment more to see what a good amount of drying out is.
+const GREENHOUSE_TEMP_MIN = 74;
+const GREENHOUSE_TEMP_MAX = 78; // keep this number pretty low, like 10 degrees less than actual max temp, because the probe is pretty low down in the chamber, the temp at the top is about 10 degrees warmer, and thats where the seedlings live.
+const GREENHOUSE_MOISTURE_MIN = 43; // after watering the moisture level drops down to about 48 pretty quickly, but it stays in the high fourties for hours. Need to experiment more to see what a good amount of drying out is.
 const GREENHOUSE_LIGHT_MIN = 50; // if for some reason it's bright in the chamber for another reason, hopefully it won't be more than 50 lumens. It will probably never be less than 5-10 lumens, so 0 isnt a good minimum.
 const WATERING_DURATION = 6000; // in miliseconds, how long do we run the pump for
 let LIGHTS_ON_TIME = 9;
