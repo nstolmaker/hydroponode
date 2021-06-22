@@ -1,3 +1,5 @@
+const nodemailer = require("nodemailer");
+
 const throttle = require('lodash/throttle');
 const { DateTime, Interval } = require("luxon");
 const { exec } = require("child_process");
@@ -629,4 +631,26 @@ console.log("[Start Time is: " + new Date().toLocaleString()+"]");
 
 const sendNotification = (message) => {
   console.warn("🚨 "+message);
+  let transporter = nodemailer.createTransport({
+    service: 'SendPulse', // no need to set host or port etc.
+    auth: {
+        user: 'nstolmaker@gmail.com',
+        pass: 'Hk9pgnJsoqo'
+    }
+  });
+
+  var message = {
+    from: "noah@chromaplex.io",
+    to: "nstolmaker@gmail.com",
+    subject: "🚨 [Hydroponode Notice]",
+    text: message
+  };
+
+  transporter.sendMail(message, 
+    function callback(err) { 
+      console.log("Message sent. Response err:", err);
+    }
+  );
 }
+
+sendNotification("Testing");
