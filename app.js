@@ -552,7 +552,9 @@ class Heater {
 
     if (itsTooHot) {
       this.switchOff();
+      //sendNotification("Turning off heat switch: "+temperature);
     } else if (itsTooCold) {
+      //sendNotification("Turning ON heat switch: "+temperature);
       this.switchOn();
     }
 
@@ -608,6 +610,7 @@ class Pump {
 
     if (itsTooDry) {
       this.hydrate();
+      sendNotification("Moisture level too dry: "+moisture+"%. Watering now.");
     } else {
       console.log("💧✅ Moisture is at an acceptable level. ");
     }
@@ -655,4 +658,3 @@ const sendNotification = (message) => {
   );
 }
 
-sendNotification("Testing");
