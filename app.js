@@ -20,6 +20,7 @@ const TIMEOUT = 'Timeout';  // enum
 const THROTTLE_SWITCH_TIME = 1000 * 30; // only flick switches once per minute
 
 // GREENHOUSE target values
+const BATTERY_MIN = 41;
 const GREENHOUSE_TEMP_MIN = 74;
 const GREENHOUSE_TEMP_MAX = 78; // keep this number pretty low, like 10 degrees less than actual max temp, because the probe is pretty low down in the chamber, the temp at the top is about 10 degrees warmer, and thats where the seedlings live.
 const GREENHOUSE_MOISTURE_MIN = 43; // after watering the moisture level drops down to about 48 pretty quickly, but it stays in the high fourties for hours. Need to experiment more to see what a good amount of drying out is.
@@ -106,7 +107,8 @@ class sensorReader {
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
   let that = this;
   async function dontDieWhileWatering() {
-    if (that.controller.pump.watering) {
+    if (that.controller.pump.watering || notifier.mailing) {
+	    console.log("Waiting for watering to finish or mailing to complete", that.controller.pump.watering, notifier.mailing);
       setTimeout(dontDieWhileWatering, 1000)
     } else {
       process.exit(1);
@@ -135,6 +137,7 @@ class sensorController {
     this.lights;
     this.heater;
     this.register();
+    this.notifier;
   }
   autoRescan() {
     if (this.waiters) {
@@ -379,6 +382,9 @@ class sensorController {
                     const res = sensor.parse_firmware(data);
                     Object.assign(sensor.device, res);
                     process.stdout.write("🔋 "+res.battery_level+"% | 𝒱 Firmware version: "+res.firmware_version+"\n");
+		    if (res.battery_level <= BATTERY_MIN) {
+      			notifier.sendNotification("WARNING! Batter Level low! "+ res.battery_level);
+		    }
                 });
                 break;
             case REALTIME_CHARACTERISTIC_UUID:
@@ -559,7 +565,7 @@ class Heater {
     }
 
     if (itsWayTooCold || itsWayTooHot) {
-      sendNotification("WARNING! TEMPERATURE IS OUT OF BOUNDS. Currently: "+temperature);
+      notifier.sendNotification("WARNING! TEMPERATURE IS OUT OF BOUNDS. Currently: "+temperature);
     }
   };
 }
@@ -610,15 +616,50 @@ class Pump {
 
     if (itsTooDry) {
       this.hydrate();
-      sendNotification("Moisture level too dry: "+moisture+"%. Watering now.");
+      notifier.sendNotification("Moisture level too dry: "+moisture+"%. Watering now.");
     } else {
       console.log("💧✅ Moisture is at an acceptable level. ");
     }
 
     if (itsWayTooDry) {
-      sendNotification("WARNING! MOISTURE IS OUT OF BOUNDS. Currently: "+moisture);
+      notifier.sendNotification("WARNING! MOISTURE IS OUT OF BOUNDS. Currently: "+moisture);
     }
   };
+}
+
+
+class Notifier {
+  constructor() {
+	  this.mailing = false;
+	  this.transporter = nodemailer.createTransport({
+	    service: 'SendPulse', // no need to set host or port etc.
+	    auth: {
+		user: 'nstolmaker@gmail.com',
+		pass: 'Hk9pgnJsoqo'
+	    }
+	  });
+
+	  this.message = {
+	    from: "noah@chromaplex.io",
+	    to: "nstolmaker@gmail.com",
+	    subject: "🚨 [Hydroponode Notice]",
+	    text: "not set" 
+	  };
+  }
+
+
+	  sendNotification(message) {
+		console.log("sendNotification invoke. mailing is: ", this.mailing);
+		this.mailing = true;
+		console.warn("🚨 "+message)
+		this.message.text = message;
+		this.transporter.sendMail(this.message, 
+			(err) => { 
+				this.mailing = false;
+				console.log("sendNotification completed. mailing is: ", this.mailing);
+			}
+		);
+	}
 }
 
 
@@ -626,35 +667,12 @@ let sensor = new sensorReader();
 let lights = new Lights;
 let heater = new Heater;
 let pump = new Pump;
+let notifier = new Notifier;
 let mySensorController = new sensorController(sensor);
 mySensorController.sensor.controller = mySensorController;
 mySensorController.lights = lights;
 mySensorController.heater = heater;
 mySensorController.pump = pump;
+mySensorController.notifier = notifier;
 
 console.log("[Start Time is: " + new Date().toLocaleString()+"]");
-
-const sendNotification = (message) => {
-  console.warn("🚨 "+message);
-  let transporter = nodemailer.createTransport({
-    service: 'SendPulse', // no need to set host or port etc.
-    auth: {
-        user: 'nstolmaker@gmail.com',
-        pass: 'Hk9pgnJsoqo'
-    }
-  });
-
-  var message = {
-    from: "noah@chromaplex.io",
-    to: "nstolmaker@gmail.com",
-    subject: "🚨 [Hydroponode Notice]",
-    text: message
-  };
-
-  transporter.sendMail(message, 
-    function callback(err) { 
-      console.log("Message sent. Response err:", err);
-    }
-  );
-}
-
