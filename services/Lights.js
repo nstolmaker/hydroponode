@@ -4,6 +4,7 @@ import { DateTime, Interval } from "luxon";
 import _ from 'lodash'
 import Consts from '../utils/constants.js'
 const {throttle} = _
+import { exec  } from 'child_process'
 
 export class Lights {
   constructor() {

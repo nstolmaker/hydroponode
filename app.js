@@ -1,8 +1,6 @@
 
 // const throttle = require('lodash/throttle');
 
-// const { exec } = require("child_process");
-import { exec  } from 'child_process'
 // import noblePgk from '@abandonware/noble'
 // const noble = require('@abandonware/noble');
 import noble from '@abandonware/noble'
