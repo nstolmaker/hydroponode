@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "type": "module",
   "dependencies": {
+    "camunda-external-task-client-js": "^2.1.0",
+    "dotenv": "^10.0.0",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.20",
     "luxon": "^1.25.0",
