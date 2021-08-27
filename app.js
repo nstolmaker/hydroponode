@@ -1,6 +1,5 @@
-import { Lights } from './services/Lights.js'
-import nodemailerPkg from 'nodemailer'
-const { nodemailer } = nodemailerPkg
+import nodemailer from 'nodemailer'
+// const { nodemailer } = nodemailerPkg
 // const nodemailer = require("nodemailer");
 import lodash from 'lodash'
 const { throttle } = lodash
@@ -11,37 +10,11 @@ import { exec  } from 'child_process'
 // import noblePgk from '@abandonware/noble'
 // const noble = require('@abandonware/noble');
 import noble from '@abandonware/noble'
+import Consts from './utils/constants.js'
 
-// dotenv support not really needed at the moment. See the package.json script 'waverleigh' for how to set these from CLI
-const PUMP_IP_ADDRESS = process.env.PUMP_IP_ADDRESS || '192.168.0.41';
-const HEATER_IP_ADDRESS = process.env.HEATER_IP_ADDRESS || '192.168.0.42';
-const LIGHTS_IP_ADDRESS = process.env.LIGHTS_IP_ADDRESS || '192.168.0.43';
-// console.log({PUMP_IP_ADDRESS}, {HEATER_IP_ADDRESS}, {LIGHTS_IP_ADDRESS});
+import { Lights } from './services/Lights.js'
+import { Heater } from './services/Heater.js'
 
-// used for all the timeouts that we wrap everything with because this is wireless and it'll fail a lot.
-const INTERVAL_CONST = 500;
-const TIMEOUT_CONST = 7000; // how long to wait before retrying for: "Peripheral Discovery"
-const RECONNECT_TIMEOUT_CONST = 11000;  // how long to wait before retrying for: "connect" and "data received".
-const TIMEOUT = 'Timeout';  // enum
-const THROTTLE_SWITCH_TIME = 1000 * 30; // only flick switches once per minute
-
-// GREENHOUSE target values
-const BATTERY_MIN = 20;
-const GREENHOUSE_TEMP_MIN = 74;
-const GREENHOUSE_TEMP_MAX = 78; // keep this number pretty low, like 10 degrees less than actual max temp, because the probe is pretty low down in the chamber, the temp at the top is about 10 degrees warmer, and thats where the seedlings live.
-const GREENHOUSE_MOISTURE_MIN = 43; // after watering the moisture level drops down to about 48 pretty quickly, but it stays in the high fourties for hours. Need to experiment more to see what a good amount of drying out is.
-const GREENHOUSE_LIGHT_MIN = 50; // if for some reason it's bright in the chamber for another reason, hopefully it won't be more than 50 lumens. It will probably never be less than 5-10 lumens, so 0 isnt a good minimum.
-const WATERING_DURATION = 6000; // in miliseconds, how long do we run the pump for
-let LIGHTS_ON_TIME = 9;
-let LIGHTS_OFF_TIME = 21;
-
-// magic numbers
-const DESIRED_PERIPHERAL_UUID = '5003a1213f8c46bb963ff9b6136c0bf8';
-const DATA_SERVICE_UUID = '0000120400001000800000805f9b34fb';
-const DATA_CHARACTERISTIC_UUID = '00001a0100001000800000805f9b34fb';
-const FIRMWARE_CHARACTERISTIC_UUID = '00001a0200001000800000805f9b34fb';
-const REALTIME_CHARACTERISTIC_UUID = '00001a0000001000800000805f9b34fb';
-const REALTIME_META_VALUE = Buffer.from([0xA0, 0x1F]);
 
 class sensorReader {
   constructor() {
@@ -85,10 +58,10 @@ class sensorReader {
       // this.requestData();
     // });
     // sensor.characteristics[DATA_CHARACTERISTIC_UUID].read();
-    if (sensor && sensor.characteristics && sensor.characteristics[DATA_CHARACTERISTIC_UUID]) {
-      sensor.characteristics[DATA_CHARACTERISTIC_UUID].subscribe();
+    if (sensor && sensor.characteristics && sensor.characteristics[Consts.DATA_CHARACTERISTIC_UUID]) {
+      sensor.characteristics[Consts.DATA_CHARACTERISTIC_UUID].subscribe();
     } else {
-      console.warn("sensor.requestData was called, but sensor?.characteristics[DATA_CHARACTERISTIC_UUID] did not return truthy. Something is wrong. Hopefully we'll recover. If you keep seeing data then it's probably fine.");
+      console.warn("sensor.requestData was called, but sensor?.characteristics[Consts.DATA_CHARACTERISTIC_UUID] did not return truthy. Something is wrong. Hopefully we'll recover. If you keep seeing data then it's probably fine.");
     }
   }
   async receiveData(data) {
@@ -151,11 +124,11 @@ class sensorController {
     }
     this.waiters = setTimeout(() => {
       this.connectToDevice(this.sensor.peripheral);
-    }, RECONNECT_TIMEOUT_CONST);
+    }, Consts.RECONNECT_TIMEOUT_CONST);
   }
 
   // this function just runs itself every INTERVAL_CONST, and then after TIMEOUT_CONST time, it'll reject.
-  watchForPeripheralFound = () => {
+  watchForPeripheralFound() {
     return new Promise((resolve, reject) => {
       const startTime = new Date().getTime();
       const pollInterval = setInterval(() => {
@@ -163,15 +136,15 @@ class sensorController {
           clearInterval(pollInterval);
           resolve(this.sensor.peripheral);
           return true;
-        } else if ((new Date().getTime() - startTime) > TIMEOUT_CONST) {
+        } else if ((new Date().getTime() - startTime) > Consts.TIMEOUT_CONST) {
           console.log("\n⌛️ Peripheral Discovery Timeout. Restarting...");
           clearInterval(pollInterval);
-          reject(TIMEOUT);
+          reject(Consts.TIMEOUT);
           return false;
         } else {
           // process.stdout.write('#');
         }
-      }, INTERVAL_CONST);
+      }, Consts.INTERVAL_CONST);
     })
   };
 
@@ -181,7 +154,7 @@ class sensorController {
       if (state === 'poweredOn') {
         const findPeripheral = () => {
           return new Promise((resolve, reject) => {
-            console.log("🔮 Scanning for device with UUID: " + DESIRED_PERIPHERAL_UUID+"...");
+            console.log("🔮 Scanning for device with UUID: " + Consts.DESIRED_PERIPHERAL_UUID+"...");
             process.stdout.write('🔎 ');
 
             // start scanning for devices
@@ -193,7 +166,7 @@ class sensorController {
               // This block runs if we found a peripheral
               // this.sensor.peripheral
             }).catch((reason) => {
-              if (reason === TIMEOUT) {
+              if (reason === Consts.TIMEOUT) {
                 this.noble.stopScanning();
                 findPeripheral();
               } else {
@@ -213,8 +186,8 @@ class sensorController {
       process.stdout.write('.');
       // TODO: this way works on the raspberry pi, but my mac wasnt resolving localname so i did the lookup by UUID. Make it smart and detect.
       // if (peripheral.advertisement.localName === 'Flower care') {
-      if ((peripheral.uuid === DESIRED_PERIPHERAL_UUID) || peripheral.advertisement.localName === 'Flower care') {
-        process.stdout.write(`\r✅ Found ${DESIRED_PERIPHERAL_UUID}!`);
+      if ((peripheral.uuid === Consts.DESIRED_PERIPHERAL_UUID) || peripheral.advertisement.localName === 'Flower care') {
+        process.stdout.write(`\r✅ Found ${Consts.DESIRED_PERIPHERAL_UUID}!`);
         
         process.stdout.write(`\n⚡️ Connecting to device with address ${peripheral.address}...`);
         if (!this.sensor) {
@@ -266,11 +239,11 @@ class sensorController {
       restart the connection request from the top. Otherwise, we have a connection, so findServices()!
     */
     const openConnection = () => {
-      return promiseWithTimeout(RECONNECT_TIMEOUT_CONST, waitForConnection, TIMEOUT)
+      return promiseWithTimeout(Consts.RECONNECT_TIMEOUT_CONST, waitForConnection, Consts.TIMEOUT)
       .then((resolveVal) => {
         this.findServices();
       }).catch((reason)=>{
-        if (reason === TIMEOUT) {
+        if (reason === Consts.TIMEOUT) {
           console.log("\n⌛️ Connection request timed out. Restarting...");
           openConnection();
           return false;
@@ -312,7 +285,7 @@ class sensorController {
           // we found the list of services, now trigger characteristics lookup for each of them:
           for (let i = 0; i < services.length; i++) {
             const service = services[i];
-            if (service.uuid === DATA_SERVICE_UUID) {
+            if (service.uuid === Consts.DATA_SERVICE_UUID) {
               foundTheServiceWeWereLookingFor = true;
               // console.log("FOUND THE RIGHT SERVICE! UUID: ", service.uuid);
               sensor.service = service;
@@ -321,7 +294,7 @@ class sensorController {
           }
           if (!foundTheServiceWeWereLookingFor) {
             console.log('Rejecting inside waitForServices because foundTheServiceWeWereLookingFor returned false');
-            reject(TIMEOUT);
+            reject(Consts.TIMEOUT);
           }
         });
       // } catch(err) {
@@ -331,12 +304,12 @@ class sensorController {
     });
 
     const openServices = () => {
-      return promiseWithTimeout(RECONNECT_TIMEOUT_CONST, waitForServices, TIMEOUT)
+      return promiseWithTimeout(Consts.RECONNECT_TIMEOUT_CONST, waitForServices, Consts.TIMEOUT)
       .then((resolveVal) => {
         console.log("Found Services by now. Calling findCharacteristics...")
         this.findCharacteristics();
       }).catch((reason)=>{
-        if (reason === TIMEOUT) {
+        if (reason === Consts.TIMEOUT) {
           console.log("\n⌛️ WaitForServices request timed out. Calling connectToDevice() again...");
           this.autoRescan();
           return false;
@@ -369,8 +342,8 @@ class sensorController {
       // service.discoverCharacteristics([], (error, characteristics) => {
         characteristics.forEach((characteristic) => {
           switch (characteristic.uuid) {
-            case DATA_CHARACTERISTIC_UUID:
-                // console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+DATA_CHARACTERISTIC_UUID);
+            case Consts.DATA_CHARACTERISTIC_UUID:
+                // console.log("🌍DISCOVERY🌍 DATA_CHARACTERISTIC_UUID HIT!:"+Consts.DATA_CHARACTERISTIC_UUID);
                 sensor.characteristics[characteristic.uuid] = characteristic;
                 foundSubscribableDataCharacteristic++;
                 // clear listeners previously created, otherwise we end up with one for every time we call this function
@@ -381,22 +354,22 @@ class sensorController {
                 });
                 sensor.requestData();
                 break;
-            case FIRMWARE_CHARACTERISTIC_UUID:
-              // console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+FIRMWARE_CHARACTERISTIC_UUID);
+            case Consts.FIRMWARE_CHARACTERISTIC_UUID:
+              // console.log("FIRMWARE_CHARACTERISTIC_UUID HIT!:"+Consts.FIRMWARE_CHARACTERISTIC_UUID);
                 sensor.characteristics[characteristic.uuid] = characteristic;
                 sensor.characteristics[characteristic.uuid].read(function (error, data) {
                     const res = sensor.parse_firmware(data);
                     Object.assign(sensor.device, res);
                     process.stdout.write("🔋 "+res.battery_level+"% | 𝒱 Firmware version: "+res.firmware_version+"\n");
-		    if (res.battery_level <= BATTERY_MIN) {
+		    if (res.battery_level <= Consts.BATTERY_MIN) {
       			notifier.sendNotification("WARNING! Batter Level low! "+ res.battery_level);
 		    }
                 });
                 break;
-            case REALTIME_CHARACTERISTIC_UUID:
+            case Consts.REALTIME_CHARACTERISTIC_UUID:
                 console.log(`⛏ Found a realtime endpoint. Enabling realtime on ${characteristic.uuid}.`);
                 sensor.characteristics[characteristic.uuid] = characteristic;
-                sensor.characteristics[characteristic.uuid].write(REALTIME_META_VALUE, false);
+                sensor.characteristics[characteristic.uuid].write(Consts.REALTIME_META_VALUE, false);
                 foundSubscribableDataCharacteristic++;
                 // resolve(true);
                 // sensor.characteristic.notify(true);
@@ -427,11 +400,11 @@ class sensorController {
     return sensor.characteristics;
     }
     const openCharacteristics = async ()=> {
-      return promiseWithTimeout(RECONNECT_TIMEOUT_CONST, waitForCharacteristics, TIMEOUT)
+      return promiseWithTimeout(Consts.RECONNECT_TIMEOUT_CONST, waitForCharacteristics, Consts.TIMEOUT)
       .then(async (characteristics) => {
         //console.log("waitForCharacteristics returned successfully. characteristics:", characteristics);
       }).catch((reason)=>{
-        if (reason === TIMEOUT) {
+        if (reason === Consts.TIMEOUT) {
           console.log("\n⌛️ waitForCharacteristics request timed out. Calling openCharacteristics again...");
           openCharacteristics();
           return false;
@@ -474,55 +447,6 @@ const promiseWithTimeout = (timeoutMs, promise, failureMessage) => {
 
 
 
-/* CONTROL THE HEAT! */
-class Heater {
-  switchOff = throttle(function() {
-    console.log("🌡♨️ Turning off switch")
-    exec("./tplink_smartplug.py -t "+HEATER_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
-      if (error) {
-          console.log(`error: ${error.message}`);
-          return;
-      }
-      if (stderr) {
-          console.log(`stderr: ${stderr}`);
-          return;
-      }
-      // console.log(`stdout: ${stdout}`);
-    });    
-  }, THROTTLE_SWITCH_TIME);
-  switchOn = throttle(function() {
-    console.log("🌡❄️ Turning on switch")
-    exec("./tplink_smartplug.py -t "+HEATER_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
-      if (error) {
-          console.log(`error: ${error.message}`);
-          return;
-      }
-      if (stderr) {
-          console.log(`stderr: ${stderr}`);
-          return;
-      }
-      // console.log(`stdout: ${stdout}`);
-    });    
-  }, THROTTLE_SWITCH_TIME);
-  manageHeat(temperature) {
-    const itsTooHot = temperature > GREENHOUSE_TEMP_MAX;
-    const itsTooCold = temperature < GREENHOUSE_TEMP_MIN;
-    const itsWayTooCold = temperature < (GREENHOUSE_TEMP_MIN - 10);
-    const itsWayTooHot = temperature > (GREENHOUSE_TEMP_MAX + 10);
-
-    if (itsTooHot) {
-      this.switchOff();
-      //sendNotification("Turning off heat switch: "+temperature);
-    } else if (itsTooCold) {
-      //sendNotification("Turning ON heat switch: "+temperature);
-      this.switchOn();
-    }
-
-    if (itsWayTooCold || itsWayTooHot) {
-      notifier.sendNotification("WARNING! TEMPERATURE IS OUT OF BOUNDS. Currently: "+temperature);
-    }
-  };
-}
 
 
 
@@ -531,7 +455,7 @@ class Pump {
   watering = false;
   hydrate = throttle(function() {
     console.log("🌧 Starting Watering @ "+new Date().toLocaleString()+".")
-    exec("./tplink_smartplug.py -t "+PUMP_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
+    exec("./tplink_smartplug.py -t "+Consts.PUMP_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
       if (error) {
           console.log(`error: ${error.message}`);
           return;
@@ -548,7 +472,7 @@ class Pump {
     setTimeout(()=> {
       // now wait 6 seconds and then turn it off
       console.log("🌤 Stopping Watering @ "+new Date().toLocaleString()+".")
-      exec("./tplink_smartplug.py -t "+PUMP_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
+      exec("./tplink_smartplug.py -t "+Consts.PUMP_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
         if (error) {
             console.log(`error: ${error.message}`);
             return;
@@ -561,12 +485,12 @@ class Pump {
         // console.log(`stdout: ${stdout}`);
         that.watering = false;
       });
-    }, WATERING_DURATION)  
-  }, THROTTLE_SWITCH_TIME);
+    }, Consts.WATERING_DURATION)  
+  }, Consts.THROTTLE_SWITCH_TIME);
   
   manageWater(moisture) {
-    const itsTooDry = moisture < GREENHOUSE_MOISTURE_MIN;
-    const itsWayTooDry = moisture < (GREENHOUSE_MOISTURE_MIN - 10);
+    const itsTooDry = moisture < Consts.GREENHOUSE_MOISTURE_MIN;
+    const itsWayTooDry = moisture < (Consts.GREENHOUSE_MOISTURE_MIN - 10);
 
     if (itsTooDry) {
       this.hydrate();
