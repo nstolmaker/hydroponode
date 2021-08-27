@@ -1,8 +1,4 @@
-import nodemailer from 'nodemailer'
-// const { nodemailer } = nodemailerPkg
-// const nodemailer = require("nodemailer");
-import lodash from 'lodash'
-const { throttle } = lodash
+
 // const throttle = require('lodash/throttle');
 
 // const { exec } = require("child_process");
@@ -14,6 +10,8 @@ import Consts from './utils/constants.js'
 
 import { Lights } from './services/Lights.js'
 import { Heater } from './services/Heater.js'
+import { Notifier } from './services/Notifier.js'
+import { Pump } from './services/Pump.js'
 
 
 class sensorReader {
@@ -447,98 +445,6 @@ const promiseWithTimeout = (timeoutMs, promise, failureMessage) => {
 
 
 
-
-
-
-/* CONTROL THE Pump! */
-class Pump {
-  watering = false;
-  hydrate = throttle(function() {
-    console.log("🌧 Starting Watering @ "+new Date().toLocaleString()+".")
-    exec("./tplink_smartplug.py -t "+Consts.PUMP_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
-      if (error) {
-          console.log(`error: ${error.message}`);
-          return;
-      }
-      if (stderr) {
-          console.log(`stderr: ${stderr}`);
-          return;
-      }
-      // console.log(`stdout: ${stdout}`);
-    });
-
-   this.watering = true;
-   let that = this;
-    setTimeout(()=> {
-      // now wait 6 seconds and then turn it off
-      console.log("🌤 Stopping Watering @ "+new Date().toLocaleString()+".")
-      exec("./tplink_smartplug.py -t "+Consts.PUMP_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
-        if (error) {
-            console.log(`error: ${error.message}`);
-            return;
-        }
-        if (stderr) {
-            console.log(`stderr: ${stderr}`);
-            return;
-        }
-        console.log("Done watering. Setting watering to false.");
-        // console.log(`stdout: ${stdout}`);
-        that.watering = false;
-      });
-    }, Consts.WATERING_DURATION)  
-  }, Consts.THROTTLE_SWITCH_TIME);
-  
-  manageWater(moisture) {
-    const itsTooDry = moisture < Consts.GREENHOUSE_MOISTURE_MIN;
-    const itsWayTooDry = moisture < (Consts.GREENHOUSE_MOISTURE_MIN - 10);
-
-    if (itsTooDry) {
-      this.hydrate();
-      notifier.sendNotification("Moisture level too dry: "+moisture+"%. Watering now.");
-    } else {
-      console.log("💧✅ Moisture is at an acceptable level. ");
-    }
-
-    if (itsWayTooDry) {
-      notifier.sendNotification("WARNING! MOISTURE IS OUT OF BOUNDS. Currently: "+moisture);
-    }
-  };
-}
-
-
-class Notifier {
-  constructor() {
-	  this.mailing = false;
-	  this.transporter = nodemailer.createTransport({
-	    service: 'SendPulse', // no need to set host or port etc.
-	    auth: {
-		user: 'nstolmaker@gmail.com',
-		pass: 'Hk9pgnJsoqo'
-	    }
-	  });
-
-	  this.message = {
-	    from: "noah@chromaplex.io",
-	    to: "nstolmaker@gmail.com",
-	    subject: "🚨 [Hydroponode Notice]",
-	    text: "not set" 
-	  };
-  }
-
-
-	  sendNotification(message) {
-		console.log("sendNotification invoke. mailing is: ", this.mailing);
-		this.mailing = true;
-		console.warn("🚨 "+message)
-		this.message.text = message;
-		this.transporter.sendMail(this.message, 
-			(err) => { 
-				this.mailing = false;
-				console.log("sendNotification completed. mailing is: ", this.mailing);
-			}
-		);
-	}
-}
 
 
 let sensor = new sensorReader();
