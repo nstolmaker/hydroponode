@@ -1,5 +1,6 @@
-require('dotenv').config()
-const { Client, logger, Variables } = require('camunda-external-task-client-js')
+import 'dotenv/config.js';
+import camundaClient from 'camunda-external-task-client-js'
+const { Client, logger, Variables } = camundaClient
 
 // set baseUrl to the camunda engine url
 const config = { baseUrl: process.env.CAMUNDA_BASE_URL + '/engine-rest' || 'http://localhost:8080/engine-rest', use: logger, asyncResponseTimeout: 10000 }
