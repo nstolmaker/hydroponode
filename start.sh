@@ -1,3 +1,3 @@
 #!/bin/sh
 
-pm2 start app.js --cron "*/5 * * * *" --restart-delay 300000
+pm2 start node -- app.js --cron "*/5 * * * *" --restart-delay 300000
