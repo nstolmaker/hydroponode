@@ -11,10 +11,11 @@ export class Broadcast {
     this.sensorData = {}
   }
   async broadcastToWorkflowEngine(sensorData) {
-    console.log("Broadcasting to workflow engine, sending sensorData: ", sensorData)
-    // this.sensorData = sensorData
-    const {id:taskUnit} = await this.fetchAndLockOneTask()
-    console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskUnit)
+    console.log("Broadcasting to workflow engine, sending sensorData: ", sensorData);
+    const taskResponseData = await this.fetchAndLockOneTask();
+    console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskResponseData);
+	  const { id: taskId } = taskResponseData.pop();
+	  console.log("TaskId is: ", taskId);
     this.sendSensorData(taskId, sensorData)
   }
   /**
