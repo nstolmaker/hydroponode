@@ -93,7 +93,7 @@ class sensorReader {
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
   let that = this;
   async function dontDieWhileWatering() {
-    if (that.controller.pump.watering || notifier.mailing || broadcastResult.) {
+    if (that.controller.pump.watering || notifier.mailing) {
 	    console.log("Waiting for watering to finish or mailing to complete", that.controller.pump.watering, notifier.mailing);
       setTimeout(dontDieWhileWatering, 1000)
     } else {

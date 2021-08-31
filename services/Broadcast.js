@@ -45,7 +45,7 @@ export class Broadcast {
       "topics":[
          {
             "topicName":"sensor-data",
-            "lockDuration":10000
+            "lockDuration":100
          }
       ]
     }
