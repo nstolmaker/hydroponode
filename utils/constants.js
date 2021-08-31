@@ -1,7 +1,10 @@
+import 'dotenv/config.js';
+
 class Constants {
 	constructor() {
 		// dotenv support not really needed at the moment. See the package.json script 'waverleigh' for how to set these from CLI
 		this.PUMP_IP_ADDRESS = process.env.PUMP_IP_ADDRESS || '192.168.0.41'
+    console.log(process.env)
 		this.HEATER_IP_ADDRESS = process.env.HEATER_IP_ADDRESS || '192.168.0.42'
 		this.LIGHTS_IP_ADDRESS = process.env.LIGHTS_IP_ADDRESS || '192.168.0.43'
 		// console.log({PUMP_IP_ADDRESS}, {HEATER_IP_ADDRESS}, {LIGHTS_IP_ADDRESS});

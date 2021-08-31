@@ -2,6 +2,7 @@ import _ from 'lodash'
 import qs from 'qs';
 import Consts from '../utils/constants.js'
 import axios from 'axios'
+import 'dotenv/config.js';
 
 /* Tell Camunda about the new sensor data! */
 export class Broadcast {
