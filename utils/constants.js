@@ -6,6 +6,8 @@ class Constants {
 		this.LIGHTS_IP_ADDRESS = process.env.LIGHTS_IP_ADDRESS || '192.168.0.43'
 		// console.log({PUMP_IP_ADDRESS}, {HEATER_IP_ADDRESS}, {LIGHTS_IP_ADDRESS});
 
+    this.CAMUNDA_BASE_URL = process.env.CAMUNDA_BASE_URL || 'http://localhost:8080'
+
 		// used for all the timeouts that we wrap everything with because this is wireless and it'll fail a lot.
 		this.INTERVAL_CONST = 500
 		this.TIMEOUT_CONST = 7000 // how long to wait before retrying for: "Peripheral Discovery"

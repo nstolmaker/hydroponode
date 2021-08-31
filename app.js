@@ -10,6 +10,7 @@ import { Lights } from './services/Lights.js'
 import { Heater } from './services/Heater.js'
 import { Notifier } from './services/Notifier.js'
 import { Pump } from './services/Pump.js'
+import { Broadcast } from './services/Broadcast.js'
 
 
 class sensorReader {
@@ -39,7 +40,7 @@ class sensorReader {
         temperature: temperature,
         lux: lux,
         moisture: moisture,
-        fertility: fertility
+        fertility: fertility,
     };
   }
 
@@ -67,6 +68,16 @@ class sensorReader {
       Object.assign(this.device.measure, res, {time: Date.now()});
       // console.log("📥 Got back data:");
       console.log("🌡 "+this.device.measure.temperature+"; 💦 "+ this.device.measure.moisture+"; 💡 "+ this.device.measure.lux );
+
+      // WORKFLOW INTEGRATION!
+      const sensorData = {
+        temperature: this.device.measure.temperature, 
+        moisture: this.device.measure.moisture,
+        light: this.device.measure.lux,
+        battery: this.device.measure.battery_level
+      }
+      this.broadcast.broadcastToWorkflowEngine(sensorData)
+
       // do stuff like turn lights on and off based on the time
       this.controller.lights.manageLights(this.device.measure.lux);
       // control based on temperature
@@ -357,6 +368,7 @@ class sensorController {
                     const res = sensor.parse_firmware(data);
                     Object.assign(sensor.device, res);
                     process.stdout.write("🔋 "+res.battery_level+"% | 𝒱 Firmware version: "+res.firmware_version+"\n");
+                    sensor.device.measure.battery_level = res.battery_level
 		    if (res.battery_level <= Consts.BATTERY_MIN) {
       			notifier.sendNotification("WARNING! Batter Level low! "+ res.battery_level);
 		    }
@@ -450,12 +462,14 @@ let lights = new Lights;
 let heater = new Heater;
 let pump = new Pump;
 let notifier = new Notifier;
+let broadcast = new Broadcast;
 let mySensorController = new sensorController(sensor);
 mySensorController.sensor.controller = mySensorController;
 mySensorController.lights = lights;
 mySensorController.heater = heater;
 mySensorController.pump = pump;
 mySensorController.notifier = notifier;
+mySensorController.broadcast = broadcast
 
 console.log("[Start Time is: " + new Date().toLocaleString()+"]");
 export default mySensorController
