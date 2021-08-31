@@ -49,10 +49,10 @@ export class Broadcast {
     })
 
     // response
-    if (response && response.status === 204) {
+    if (response && response.status === 200) {
       console.log("Fetched and locked one in! Go ahead and send in the data now.")
-      console.log("Server response looks like this: ",response)
-      return response.body
+      console.log("Server response looks like this: ",response.data)
+      return response.data
     } else {
       console.log("Fetched and locked but unrecognized status: ", response)
       return false
@@ -100,11 +100,11 @@ export class Broadcast {
     })
 
     // response
-    if (response.status === '204') {
+    if (response.status === 200) {
       console.log("Sensor Data sent!")
       return true
     } else {
-      console.log("Sensor Data sent but unrecognized status: ", response.status, response.statusText)
+      console.log("Sensor Data sent but unrecognized status: ", response)
       return false
     }
   }
