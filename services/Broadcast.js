@@ -13,9 +13,8 @@ export class Broadcast {
   async broadcastToWorkflowEngine(sensorData) {
     console.log("Broadcasting to workflow engine, sending sensorData: ", sensorData)
     // this.sensorData = sensorData
-    const taskUnit = await this.fetchAndLockOneTask()
+    const {id:taskUnit} = await this.fetchAndLockOneTask()
     console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskUnit)
-    const taskId = taskUnit.id
     this.sendSensorData(taskId, sensorData)
   }
   /**
@@ -51,7 +50,6 @@ export class Broadcast {
     // response
     if (response && response.status === 200) {
       console.log("Fetched and locked one in! Go ahead and send in the data now.")
-      console.log("Server response looks like this: ",response.data)
       return response.data
     } else {
       console.log("Fetched and locked but unrecognized status: ", response)
