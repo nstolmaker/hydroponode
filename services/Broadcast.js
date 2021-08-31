@@ -16,7 +16,7 @@ export class Broadcast {
     console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskResponseData);
 	  const { id: taskId } = taskResponseData.pop();
 	  console.log("TaskId is: ", taskId);
-    this.sendSensorData(taskId, sensorData)
+    await this.sendSensorData(taskId, sensorData)
   }
   /**
    * Before we can do anything to a task in camunda, we have to take ownership of it and give it a temporary lock.
@@ -87,6 +87,8 @@ export class Broadcast {
     }
 
     const endpointPath = `${this.workflowEngineAddress}/engine-rest/external-task/${taskId}/complete`
+	  console.log("About to send sensor data to endpoint: ", endpointPath);
+	  console.log("Payload is: ", bodyPayload);
     const response = await axios({
       url: endpointPath,
       data: bodyPayload,
@@ -96,6 +98,7 @@ export class Broadcast {
       }  
     }).catch((reason)=>{
       console.log("AXIOS ERROR! Reason: ", reason)
+	    console.log("Response data: ", response.data)
     })
 
     // response
