@@ -10,10 +10,10 @@ export class Broadcast {
     this.workflowEngineAddress = Consts.CAMUNDA_BASE_URL
     this.sensorData = {}
   }
-  broadcastToWorkflowEngine(sensorData) {
+  async broadcastToWorkflowEngine(sensorData) {
     console.log("Broadcasting to workflow engine, sending sensorData: ", sensorData)
     // this.sensorData = sensorData
-    const taskUnit = this.fetchAndLockOneTask()
+    const taskUnit = await this.fetchAndLockOneTask()
     console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskUnit)
     const taskId = taskUnit.id
     this.sendSensorData(taskId, sensorData)
@@ -25,7 +25,7 @@ export class Broadcast {
   async fetchAndLockOneTask() {
     // payload
     const bodyPayload = {
-      "workerId":"tuesdayWorker",
+      "workerId":"some-random-id",
       "maxTasks":1,
       "usePriority":true,
       "topics":[
@@ -39,7 +39,7 @@ export class Broadcast {
     // request
     const response = await axios({
       url: `${this.workflowEngineAddress}/engine-rest/external-task/fetchAndLock`,
-      data: qs.stringify(bodyPayload),
+      data: bodyPayload,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -49,12 +49,12 @@ export class Broadcast {
     })
 
     // response
-    if (response.status === '204') {
+    if (response && response.status === 204) {
       console.log("Fetched and locked one in! Go ahead and send in the data now.")
       console.log("Server response looks like this: ",response)
       return response.body
     } else {
-      console.log("Fetched and locked but unrecognized status: ", response.status, response.statusText)
+      console.log("Fetched and locked but unrecognized status: ", response)
       return false
     }
   }
@@ -66,7 +66,7 @@ export class Broadcast {
   async sendSensorData(taskId, sensorData) {
     // payload
     const bodyPayload = {
-      "workerId": "tuesdayWorker",
+      "workerId": "some-random-id",
       "variables": {
         "moisture": {
           "value": sensorData.moisture,
@@ -90,7 +90,7 @@ export class Broadcast {
     const endpointPath = `${this.workflowEngineAddress}/engine-rest/external-task/${taskId}/complete`
     const response = await axios({
       url: endpointPath,
-      data: qs.stringify(bodyPayload),
+      data: bodyPayload,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
