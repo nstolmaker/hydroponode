@@ -76,7 +76,7 @@ class sensorReader {
         light: this.device.measure.lux,
         battery: this.device.measure.battery_level
       }
-      this.broadcast.broadcastToWorkflowEngine(sensorData)
+      this.controller.broadcast.broadcastToWorkflowEngine(sensorData)
 
       // do stuff like turn lights on and off based on the time
       this.controller.lights.manageLights(this.device.measure.lux);
