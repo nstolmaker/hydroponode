@@ -1,7 +1,7 @@
 import _ from 'lodash'
+import qs from 'qs';
 import Consts from '../utils/constants.js'
-const {throttle} = _
-import { exec  } from 'child_process'
+import axios from 'axios'
 
 /* Tell Camunda about the new sensor data! */
 export class Broadcast {
@@ -36,12 +36,15 @@ export class Broadcast {
     }
 
     // request
-    const response = await fetch(`${this.workflowEngineAddress}/engine-rest/external-task/fetchAndLock`, {
-      body: JSON.stringify(bodyPayload),
+    const response = await axios({
+      url: `${this.workflowEngineAddress}/engine-rest/external-task/fetchAndLock`,
+      data: qs.stringify(bodyPayload),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       }  
+    }).catch((reason)=>{
+      console.log("AXIOS ERROR! Reason: ", reason)
     })
 
     // response
@@ -84,15 +87,15 @@ export class Broadcast {
     }
 
     const endpointPath = `${this.workflowEngineAddress}/engine-rest/external-task/${taskId}/complete`
-    
-
-    // request
-    const response = await fetch(endpointPath, {
-      body: JSON.stringify(bodyPayload),
+    const response = await axios({
+      url: endpointPath,
+      data: qs.stringify(bodyPayload),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       }  
+    }).catch((reason)=>{
+      console.log("AXIOS ERROR! Reason: ", reason)
     })
 
     // response

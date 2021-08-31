@@ -5,13 +5,15 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
+    "axios": "^0.21.1",
     "camunda-external-task-client-js": "^2.1.0",
     "dotenv": "^10.0.0",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.20",
     "luxon": "^1.25.0",
     "miflora": "^1.0.6",
-    "nodemailer": "^6.6.2"
+    "nodemailer": "^6.6.2",
+    "qs": "^6.10.1"
   },
   "scripts": {
     "waverleigh": "export PUMP_IP_ADDRESS=192.168.0.41 HEATER_IP_ADDRESS=192.168.0.42 LIGHTS_IP_ADDRESS=192.168.0.43; node app"
