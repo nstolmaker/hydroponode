@@ -110,7 +110,7 @@ export class Broadcast {
     })
 
     // response
-    if (response.status === 200) {
+    if (response.status === 204) {
       console.log("Sensor Data sent!")
       return true
     } else {
