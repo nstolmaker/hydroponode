@@ -17,15 +17,15 @@ export class Broadcast {
       // console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskResponseArr);
 
       // we only ask for one job at a time so the length should be 1. TODO: Throw an error if length > 0.
-	if (taskResponseArr.length !== 1) {
-		console.log("Error. taskResponseArr is too long or too short. it is: ", taskResponseArr);
-		return false
-	}
+      if (taskResponseArr.length !== 1) {
+        console.log("Error. taskResponseArr is too long or too short. it is: ", taskResponseArr);
+        return false
+      }
+
 	    const taskResponse = taskResponseArr.pop();
       const { id: taskId } = taskResponse;
       console.log("TaskId is: " + taskId);
-      await this.sendSensorData(taskId, sensorData)
-      return true
+      return await this.sendSensorData(taskId, sensorData)
     } catch (e) {
 	    console.log("Error in broadcastToWorkflowEngine: ", e)
       throw new Error("Something went wrong in the broadcastToWorkflowEngine function.")
@@ -39,7 +39,7 @@ export class Broadcast {
   async fetchAndLockOneTask() {
     // payload
     const bodyPayload = {
-      "workerId":"tuesdayWorker",
+      "workerId":"some-random-id",
       "maxTasks":1,
       "usePriority":true,
       "topics":[
@@ -79,7 +79,7 @@ export class Broadcast {
   async sendSensorData(taskId, sensorData) {
     // payload
     const bodyPayload = {
-      "workerId": "tuesdayWorker",
+      "workerId": "some-random-id",
       "variables": {
         "moisture": {
           "value": Math.round(sensorData.moisture),

@@ -69,6 +69,13 @@ class sensorReader {
       // console.log("📥 Got back data:");
       console.log("🌡 "+this.device.measure.temperature+"; 💦 "+ this.device.measure.moisture+"; 💡 "+ this.device.measure.lux );
 
+      // do stuff like turn lights on and off based on the time
+      this.controller.lights.manageLights(this.device.measure.lux);
+      // control based on temperature
+      //this.controller.heater.manageHeat(this.device.measure.temperature);
+      // control based on moisture
+      this.controller.pump.manageWater(this.device.measure.moisture);
+
       // WORKFLOW INTEGRATION!
       const sensorData = {
         temperature: this.device.measure.temperature, 
@@ -76,14 +83,7 @@ class sensorReader {
         light: this.device.measure.lux,
         battery: this.device.measure.battery_level
       }
-      await this.controller.broadcast.broadcastToWorkflowEngine(sensorData)
-
-      // do stuff like turn lights on and off based on the time
-      this.controller.lights.manageLights(this.device.measure.lux);
-      // control based on temperature
-      //this.controller.heater.manageHeat(this.device.measure.temperature);
-      // control based on moisture
-      this.controller.pump.manageWater(this.device.measure.moisture);
+      const broadcastResult = await this.controller.broadcast.broadcastToWorkflowEngine(sensorData)
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
@@ -93,7 +93,7 @@ class sensorReader {
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
   let that = this;
   async function dontDieWhileWatering() {
-    if (that.controller.pump.watering || notifier.mailing) {
+    if (that.controller.pump.watering || notifier.mailing || broadcastResult.) {
 	    console.log("Waiting for watering to finish or mailing to complete", that.controller.pump.watering, notifier.mailing);
       setTimeout(dontDieWhileWatering, 1000)
     } else {
