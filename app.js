@@ -81,7 +81,7 @@ class sensorReader {
       // do stuff like turn lights on and off based on the time
       this.controller.lights.manageLights(this.device.measure.lux);
       // control based on temperature
-      this.controller.heater.manageHeat(this.device.measure.temperature);
+      //this.controller.heater.manageHeat(this.device.measure.temperature);
       // control based on moisture
       this.controller.pump.manageWater(this.device.measure.moisture);
     } else {

@@ -39,7 +39,7 @@ export class Broadcast {
   async fetchAndLockOneTask() {
     // payload
     const bodyPayload = {
-      "workerId":"some-random-id",
+      "workerId":"tuesdayWorker",
       "maxTasks":1,
       "usePriority":true,
       "topics":[
@@ -79,7 +79,7 @@ export class Broadcast {
   async sendSensorData(taskId, sensorData) {
     // payload
     const bodyPayload = {
-      "workerId": "some-random-id",
+      "workerId": "tuesdayWorker",
       "variables": {
         "moisture": {
           "value": Math.round(sensorData.moisture),
