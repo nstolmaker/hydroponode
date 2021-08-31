@@ -11,12 +11,20 @@ export class Broadcast {
     this.sensorData = {}
   }
   async broadcastToWorkflowEngine(sensorData) {
-    console.log("Broadcasting to workflow engine, sending sensorData: ", sensorData);
-    const taskResponseData = await this.fetchAndLockOneTask();
-    console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskResponseData);
-	  const { id: taskId } = taskResponseData.pop();
-	  console.log("TaskId is: ", taskId);
-    await this.sendSensorData(taskId, sensorData)
+    try {
+      console.log("Broadcasting to workflow engine, sending sensorData: ", sensorData);
+      const taskResponseArr = await this.fetchAndLockOneTask();
+      // console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskResponseArr);
+
+      // we only ask for one job at a time so the length should be 1. TODO: Throw an error if length > 0.
+      const { id: taskId } = taskResponseArr.pop();
+      console.log("TaskId is: " + taskId);
+      await this.sendSensorData(taskId, sensorData)
+      return true
+    } catch (e) {
+      throw new Error("Something went wrong in the broadcastToWorkflowEngine function.")
+      return false
+    }
   }
   /**
    * Before we can do anything to a task in camunda, we have to take ownership of it and give it a temporary lock.
@@ -68,19 +76,19 @@ export class Broadcast {
       "workerId": "some-random-id",
       "variables": {
         "moisture": {
-          "value": sensorData.moisture,
+          "value": Math.round(sensorData.moisture),
           "type": "Integer"
         },
         "light": {
-          "value": sensorData.light,
+          "value": Math.round(sensorData.light),
           "type": "Integer"
         },
         "temperature": {
-          "value": sensorData.temperature,
+          "value": Math.round(sensorData.temperature),
           "type": "Integer"
         },
         "battery": {
-          "value": sensorData.battery_level,
+          "value": Math.round(sensorData.battery),
           "type": "Integer"
         }
       },
