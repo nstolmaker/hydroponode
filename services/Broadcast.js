@@ -1,8 +1,10 @@
 import _ from 'lodash'
-import { PrismaClient } from '@prisma/client'
 import Consts from '../utils/constants.js'
 import axios from 'axios'
 import 'dotenv/config.js';
+
+import prismapkg from '@prisma/client';
+const { PrismaClient } = prismapkg;
 
 /* Tell Camunda about the new sensor data! */
 export class Broadcast {
@@ -127,7 +129,7 @@ export class Broadcast {
     }
   }
 
-  recordSensorDataInDb(sensorData) {
+  async recordSensorDataInDb(sensorData) {
     console.log("Recording data in database for sensorData:", sensorData);
     const prisma = new PrismaClient()
     const prismaResponse = await prisma.sensor_history.create({
