@@ -30,6 +30,7 @@ class sensorReader {
           time: null
       }
     };
+    this.waiting = false
   }
   parse_data(data) {
     let temperature = (data.readUInt16LE(0) / 10) * 9 / 5 + 32;
@@ -62,6 +63,10 @@ class sensorReader {
     }
   }
   async receiveData(data) {
+    if (this.waiting) {
+      console.log("waiting to hear back from comunda, so just ignoring the rest of the incoming data for now")
+      return
+    }
     // console.log("receiveData called with data", data);
     if (data) {
       var res = this.parse_data(data);
@@ -83,7 +88,9 @@ class sensorReader {
         light: this.device.measure.lux,
         battery: this.device.measure.battery_level
       }
+      this.waiting = true
       const broadcastResult = await this.controller.broadcast.broadcastToWorkflowEngine(sensorData)
+      this.waiting = false
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
@@ -93,7 +100,7 @@ class sensorReader {
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
   let that = this;
   async function dontDieWhileWatering() {
-    if (that.controller.pump.watering || notifier.mailing || broadcastResult.) {
+    if (that.controller.pump.watering || notifier.mailing) {
 	    console.log("Waiting for watering to finish or mailing to complete", that.controller.pump.watering, notifier.mailing);
       setTimeout(dontDieWhileWatering, 1000)
     } else {
