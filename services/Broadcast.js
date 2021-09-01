@@ -14,7 +14,7 @@ export class Broadcast {
     try {
       console.log("Broadcasting to workflow engine, sending sensorData: ", sensorData);
       const taskResponseArr = await this.fetchAndLockOneTask();
-      // console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskResponseArr);
+      console.log("taskUnit returned from server is below. look for an id and pass it into the completed function", taskResponseArr);
 
       // we only ask for one job at a time so the length should be 1. TODO: Throw an error if length > 0.
       if (taskResponseArr.length !== 1) {

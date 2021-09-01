@@ -65,7 +65,7 @@ class sensorReader {
   async receiveData(data) {
     if (this.waiting) {
       console.log("waiting to hear back from comunda, so just ignoring the rest of the incoming data for now")
-      return
+      return false
     }
     // console.log("receiveData called with data", data);
     if (data) {
