@@ -1,5 +1,5 @@
 import _ from 'lodash'
-import qs from 'qs';
+import { PrismaClient } from '@prisma/client'
 import Consts from '../utils/constants.js'
 import axios from 'axios'
 import 'dotenv/config.js';
@@ -125,6 +125,17 @@ export class Broadcast {
       console.log("Sensor Data sent but unrecognized status: ", response)
       return false
     }
+  }
+
+  recordSensorDataInDb(sensorData) {
+    console.log("Recording data in database for sensorData:", sensorData);
+    const prisma = new PrismaClient()
+    const prismaResponse = await prisma.sensor_history.create({
+      data: {
+        sensor_data: JSON.stringify(sensorData)
+      }
+    })
+    return prismaResponse
   }
 }
 

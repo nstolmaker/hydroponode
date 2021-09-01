@@ -89,6 +89,7 @@ class sensorReader {
         battery: this.device.measure.battery_level
       }
       this.waiting = true
+      await this.controller.broadcast.recordSensorDataInDb(sensorData)
       const broadcastResult = await this.controller.broadcast.broadcastToWorkflowEngine(sensorData)
       this.waiting = false
     } else {
