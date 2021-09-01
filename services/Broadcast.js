@@ -42,10 +42,11 @@ export class Broadcast {
       "workerId":"some-random-id",
       "maxTasks":1,
       "usePriority":true,
+      "asyncResponseTimeout": 29000,
       "topics":[
          {
             "topicName":"sensor-data",
-            "lockDuration":100
+            "lockDuration":1000
          }
       ]
     }
@@ -65,6 +66,7 @@ export class Broadcast {
     // response
     if (response && response.status === 200) {
       console.log("Fetched and locked one in! Go ahead and send in the data now.")
+	    console.log("Response from fetchandlock was: ", response.data)
       return response.data
     } else {
       console.log("Fetched and locked but unrecognized status: ", response)
