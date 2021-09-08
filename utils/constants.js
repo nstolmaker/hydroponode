@@ -10,6 +10,7 @@ class Constants {
 		// console.log({PUMP_IP_ADDRESS}, {HEATER_IP_ADDRESS}, {LIGHTS_IP_ADDRESS});
 
     this.CAMUNDA_BASE_URL = process.env.CAMUNDA_BASE_URL || 'http://localhost:8080'
+    this.BIRDSNEST_DOMAIN = process.env.BIRDSNEST_DOMAIN || 'localhost:3000'
 
 		// used for all the timeouts that we wrap everything with because this is wireless and it'll fail a lot.
 		this.INTERVAL_CONST = 500

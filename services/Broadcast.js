@@ -3,13 +3,11 @@ import Consts from '../utils/constants.js'
 import axios from 'axios'
 import 'dotenv/config.js';
 
-import prismapkg from '@prisma/client';
-const { PrismaClient } = prismapkg;
-
 /* Tell Camunda about the new sensor data! */
 export class Broadcast {
   constructor() {
     this.workflowEngineAddress = Consts.CAMUNDA_BASE_URL
+    this.databaseEndpoint = `http://${Consts.BIRDSNEST_DOMAIN}/sensor-data`
     this.sensorData = {}
   }
   async broadcastToWorkflowEngine(sensorData) {
@@ -130,14 +128,37 @@ export class Broadcast {
   }
 
   async recordSensorDataInDb(sensorData) {
-    console.log("Recording data in database for sensorData:", sensorData);
-    const prisma = new PrismaClient()
-    const prismaResponse = await prisma.sensor_history.create({
+    console.log("About to send sensor data to endpoint: ", this.databaseEndpoint);
+    const bodyPayload = 
+    {
       data: {
         sensor_data: JSON.stringify(sensorData)
       }
+    }
+
+    
+	  console.log("Payload is: ", bodyPayload);
+    const response = await axios({
+      url: this.databaseEndpoint,
+      data: bodyPayload,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }  
+    }).catch((reason)=>{
+      console.log("AXIOS ERROR! Reason: ", reason)
+	    console.log("Response data: ", response.data)
     })
-    return prismaResponse
+
+    // response
+    if (response.status === 200) {
+      console.log("Sensor Data sent!")
+      return true
+    } else {
+      console.log("Sensor Data sent but unrecognized status: ", response)
+      return false
+    }
+    return response
   }
 }
 
