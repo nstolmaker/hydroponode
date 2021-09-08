@@ -131,11 +131,8 @@ export class Broadcast {
     console.log("About to send sensor data to endpoint: ", this.databaseEndpoint);
     const bodyPayload = 
     {
-      data: {
-        sensor_data: JSON.stringify(sensorData)
-      }
+      data: JSON.stringify(sensorData)
     }
-
     
 	  console.log("Payload is: ", bodyPayload);
     const response = await axios({
@@ -158,7 +155,6 @@ export class Broadcast {
       console.log("Sensor Data sent but unrecognized status: ", response)
       return false
     }
-    return response
   }
 }
 
