@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import Consts from '../utils/constants.js'
 
 export class Notifier {
   constructor() {
@@ -6,14 +7,14 @@ export class Notifier {
 	  this.transporter = nodemailer.createTransport({
 	    service: 'SendPulse', // no need to set host or port etc.
 	    auth: {
-		user: 'nstolmaker@gmail.com',
-		pass: ''
+        user: Consts.SENDPULSE_EMAIL,
+        pass: Consts.SENDPULSE_PASSWORD
 	    }
 	  });
 
 	  this.message = {
 	    from: "noah@chromaplex.io",
-	    to: "nstolmaker@gmail.com",
+	    to: Consts.SENDPULSE_EMAIL,
 	    subject: "🚨 [Hydroponode Notice]",
 	    text: "not set" 
 	  };
