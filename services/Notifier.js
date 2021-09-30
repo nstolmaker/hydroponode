@@ -7,7 +7,7 @@ export class Notifier {
 	    service: 'SendPulse', // no need to set host or port etc.
 	    auth: {
 		user: 'nstolmaker@gmail.com',
-		pass: 'Hk9pgnJsoqo'
+		pass: ''
 	    }
 	  });
 
