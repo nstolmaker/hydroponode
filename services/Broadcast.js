@@ -7,7 +7,7 @@ import 'dotenv/config.js';
 export class Broadcast {
   constructor() {
     this.workflowEngineAddress = Consts.CAMUNDA_BASE_URL
-    this.databaseEndpoint = `http://${Consts.BIRDSNEST_DOMAIN}/sensor-data`
+    this.databaseEndpoint = `https://${Consts.BIRDSNEST_DOMAIN}/sensor-data`
     this.sensorData = {}
   }
   async broadcastToWorkflowEngine(sensorData) {
@@ -118,7 +118,7 @@ export class Broadcast {
     })
 
     // response
-    if (response.status === 201) {
+    if (response.status === 204) {
       console.log("Sensor Data sent!")
       return true
     } else {
@@ -131,7 +131,7 @@ export class Broadcast {
     console.log("About to send sensor data to endpoint: ", this.databaseEndpoint);
     const bodyPayload = 
     {
-      data: JSON.stringify(sensorData)
+      data: sensorData
     }
     
 	  console.log("Payload is: ", bodyPayload);
