@@ -35,6 +35,15 @@ sudo setcap cap_net_raw+eip $(eval readlink -f $(which node))
 
 - Git clone https://github.com/nstolmaker/hydroponode.git
 
+# Launch it!
+ssh pi@192.168.0.11 (your raspberry pi's IP)
+cd /home/nstolmaker/hydroponode
+sudo su
+yarn run waverleigh 2>&1 > scanoutput.txt &
+or
+node app  2>&1 > scanoutput.txt &
+disown -h %1
+
 # Notes
 
 - 1st new smartplug is at: 192.168.0.41 "Pump"
@@ -44,3 +53,4 @@ sudo setcap cap_net_raw+eip $(eval readlink -f $(which node))
 
 # Further Reading
 [Noble](https://github.com/abandonware/noble)
+[TPLink Outlet](https://www.softscheck.com/en/reverse-engineering-tp-link-hs110/)
