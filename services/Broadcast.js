@@ -7,7 +7,7 @@ import 'dotenv/config.js';
 export class Broadcast {
   constructor() {
     this.workflowEngineAddress = Consts.CAMUNDA_BASE_URL
-    this.databaseEndpoint = `https://${Consts.BIRDSNEST_DOMAIN}/sensor-data`
+    this.databaseEndpoint = `http://${Consts.BIRDSNEST_DOMAIN}/`
     this.sensorData = {}
   }
   async broadcastToWorkflowEngine(sensorData) {
@@ -136,7 +136,7 @@ export class Broadcast {
     
 	  console.log("Payload is: ", bodyPayload);
     const response = await axios({
-      url: this.databaseEndpoint,
+      url: this.databaseEndpoint + 'sensor-data',
       data: bodyPayload,
       method: 'POST',
       headers: {
@@ -153,6 +153,36 @@ export class Broadcast {
       return true
     } else {
       console.log("Sensor Data sent but unrecognized status: ", response)
+      return false
+    }
+  }
+
+  async recordActionHistoryInDb(actionData) {
+    console.log("About to send action history data to endpoint: ", this.databaseEndpoint);
+    const bodyPayload = 
+    {
+      data: JSON.stringify(actionData)
+    }
+    
+	  console.log("Payload is: ", bodyPayload);
+    const response = await axios({
+      url: this.databaseEndpoint + 'action-history',
+      data: bodyPayload,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }  
+    }).catch((reason)=>{
+      console.log("AXIOS ERROR! Reason: ", reason)
+	    console.log("Response data: ", response.data)
+    })
+
+    // response
+    if (response.status === 200) {
+      console.log("action-history Data sent!")
+      return true
+    } else {
+      console.log("action-history Data sent but unrecognized status: ", response)
       return false
     }
   }
