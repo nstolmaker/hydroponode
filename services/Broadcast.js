@@ -128,7 +128,7 @@ export class Broadcast {
   }
 
   async recordSensorDataInDb(sensorData) {
-    console.log("About to send sensor data to endpoint: ", this.databaseEndpoint);
+    console.log("About to send sensor data to endpoint: ", this.databaseEndpoint + 'sensor-dataa');
     const bodyPayload = 
     {
       data: sensorData
@@ -158,11 +158,8 @@ export class Broadcast {
   }
 
   async recordActionHistoryInDb(actionData) {
-    console.log("About to send action history data to endpoint: ", this.databaseEndpoint);
-    const bodyPayload = 
-    {
-      data: JSON.stringify(actionData)
-    }
+    console.log("About to send action history data to endpoint: ", this.databaseEndpoint + 'action-history');
+    const bodyPayload = JSON.stringify(actionData);
     
 	  console.log("Payload is: ", bodyPayload);
     const response = await axios({
@@ -178,7 +175,7 @@ export class Broadcast {
     })
 
     // response
-    if (response.status === 200) {
+    if (response.status === 201) {
       console.log("action-history Data sent!")
       return true
     } else {

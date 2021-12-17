@@ -15,9 +15,11 @@
   },
   "scripts": {
     "waverleigh": "export PUMP_IP_ADDRESS=192.168.0.41 HEATER_IP_ADDRESS=192.168.0.42 LIGHTS_IP_ADDRESS=192.168.0.43; node app",
-    "test": "npm run jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules npx jest"
   },
   "devDependencies": {
-    "eslint": "^7.32.0"
+    "eslint": "^7.32.0",
+    "jest": "^27.4.5",
+    "mocha": "^9.1.3"
   }
 }

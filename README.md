@@ -44,6 +44,11 @@ or
 node app  2>&1 > scanoutput.txt &
 disown -h %1
 
+# Run tests
+There's only two tests right now and they both basically just prove that the nestjs (birdsnest) API service exists. They don't even clean up after themselves, they pollute the prod data. But... they DO work. 
+
+Also they're using experimental ECMA module support in Jest, which the documentation says if flaky.
+
 # Notes
 
 - 1st new smartplug is at: 192.168.0.41 "Pump"
