@@ -75,7 +75,7 @@ class sensorReader {
       console.log("🌡 "+this.device.measure.temperature+"; 💦 "+ this.device.measure.moisture+"; 💡 "+ this.device.measure.lux );
 
       // do stuff like turn lights on and off based on the time
-      this.controller.lights.manageLights(this.device.measure.lux);
+      // this.controller.lights.manageLights(this.device.measure.lux);
       // control based on temperature
       //this.controller.heater.manageHeat(this.device.measure.temperature);
       // control based on moisture
