@@ -6,8 +6,6 @@
 import noble from '@abandonware/noble'
 import Consts from './utils/constants.js'
 
-import { Lights } from './services/Lights.js'
-import { Heater } from './services/Heater.js'
 import { Notifier } from './services/Notifier.js'
 import { Pump } from './services/Pump.js'
 import { Broadcast } from './services/Broadcast.js'
@@ -128,8 +126,6 @@ class sensorController {
     this.sensor = sensor;
     this.waiters;
     this.noble = noble;
-    this.lights;
-    this.heater;
     this.register();
     this.notifier;
   }
@@ -466,15 +462,11 @@ const promiseWithTimeout = (timeoutMs, promise, failureMessage) => {
 
 
 let sensor = new sensorReader();
-let lights = new Lights;
-let heater = new Heater;
 let pump = new Pump;
 let notifier = new Notifier;
 let broadcast = new Broadcast;
 let mySensorController = new sensorController(sensor);
 mySensorController.sensor.controller = mySensorController;
-mySensorController.lights = lights;
-mySensorController.heater = heater;
 mySensorController.pump = pump;
 mySensorController.notifier = notifier;
 mySensorController.broadcast = broadcast
