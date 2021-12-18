@@ -129,10 +129,7 @@ export class Broadcast {
 
   async recordSensorDataInDb(sensorData) {
     console.log("About to send sensor data to endpoint: ", this.databaseEndpoint + 'sensor-data');
-    const bodyPayload = 
-    {
-      data: sensorData
-    }
+    const bodyPayload = sensorData
     
 	  console.log("Payload is: ", bodyPayload);
     const response = await axios({
