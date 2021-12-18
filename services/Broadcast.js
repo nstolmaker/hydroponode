@@ -7,7 +7,7 @@ import 'dotenv/config.js';
 export class Broadcast {
   constructor() {
     this.workflowEngineAddress = Consts.CAMUNDA_BASE_URL
-    this.databaseEndpoint = `http://${Consts.BIRDSNEST_DOMAIN}/`
+    this.databaseEndpoint = `https://${Consts.BIRDSNEST_DOMAIN}/`
     this.sensorData = {}
   }
   async broadcastToWorkflowEngine(sensorData) {
