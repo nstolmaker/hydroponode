@@ -3,12 +3,20 @@ const { throttle } = lodash
 
 import Consts from '../utils/constants.js'
 import { exec  } from 'child_process'
+import { Broadcast } from './Broadcast.js'
 
 /* CONTROL THE Pump! */
 export class Pump {
   watering = false;
   hydrate = throttle(function() {
     console.log("🌧 Starting Watering @ "+new Date().toLocaleString()+".")
+    const broadcast = new Broadcast();
+    const actionData = {
+      system: 'pump',
+      action: 'on',
+      message: 'going to attempt to turn ON pump because moisture is low'
+    }
+    await broadcast.recordActionHistoryInDb(actionData);
     exec("./tplink_smartplug.py -t "+Consts.PUMP_IP_ADDRESS+" -c on", (error, stdout, stderr) => {
       if (error) {
           console.log(`error: ${error.message}`);
@@ -26,6 +34,12 @@ export class Pump {
     setTimeout(()=> {
       // now wait 6 seconds and then turn it off
       console.log("🌤 Stopping Watering @ "+new Date().toLocaleString()+".")
+      const actionData = {
+        system: 'pump',
+        action: 'pff',
+        message: 'going to attempt to turn OFF pump, watering should be done'
+      }
+      await broadcast.recordActionHistoryInDb(actionData);
       exec("./tplink_smartplug.py -t "+Consts.PUMP_IP_ADDRESS+" -c off", (error, stdout, stderr) => {
         if (error) {
             console.log(`error: ${error.message}`);
