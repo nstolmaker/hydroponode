@@ -8,7 +8,7 @@ import { Broadcast } from './Broadcast.js'
 /* CONTROL THE Pump! */
 export class Pump {
   watering = false;
-  hydrate = throttle(function() {
+  hydrate = throttle( async function() {
     console.log("🌧 Starting Watering @ "+new Date().toLocaleString()+".")
     const broadcast = new Broadcast();
     const actionData = {
@@ -31,7 +31,7 @@ export class Pump {
 
    this.watering = true;
    let that = this;
-    setTimeout(()=> {
+    setTimeout( async ()=> {
       // now wait 6 seconds and then turn it off
       console.log("🌤 Stopping Watering @ "+new Date().toLocaleString()+".")
       const actionData = {
