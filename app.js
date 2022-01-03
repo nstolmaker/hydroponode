@@ -7,7 +7,6 @@ import noble from '@abandonware/noble'
 import Consts from './utils/constants.js'
 
 import { Notifier } from './services/Notifier.js'
-import { Pump } from './services/Pump.js'
 import { Broadcast } from './services/Broadcast.js'
 
 
@@ -77,7 +76,7 @@ class sensorReader {
       // control based on temperature
       //this.controller.heater.manageHeat(this.device.measure.temperature);
       // control based on moisture
-      this.controller.pump.manageWater(this.device.measure.moisture);
+      // this.controller.pump.manageWater(this.device.measure.moisture);
 
       // WORKFLOW INTEGRATION!
       const sensorData = {
@@ -99,8 +98,8 @@ class sensorReader {
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
   let that = this;
   async function dontDieWhileWatering() {
-    if (that.controller.pump.watering || notifier.mailing) {
-	    console.log("Waiting for watering to finish or mailing to complete", that.controller.pump.watering, notifier.mailing);
+    if (notifier.mailing) {
+	    console.log("Waiting for mailing to complete", notifier.mailing);
       setTimeout(dontDieWhileWatering, 1000)
     } else {
       process.exit(1);
@@ -462,12 +461,10 @@ const promiseWithTimeout = (timeoutMs, promise, failureMessage) => {
 
 
 let sensor = new sensorReader();
-let pump = new Pump;
 let notifier = new Notifier;
 let broadcast = new Broadcast;
 let mySensorController = new sensorController(sensor);
 mySensorController.sensor.controller = mySensorController;
-mySensorController.pump = pump;
 mySensorController.notifier = notifier;
 mySensorController.broadcast = broadcast
 
