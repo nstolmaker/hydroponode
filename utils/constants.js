@@ -20,7 +20,7 @@ class Constants {
 		this.THROTTLE_SWITCH_TIME = 1000 * 30 // only flick switches once per minute
 
 		// GREENHOUSE target values
-		this.BATTERY_MIN = 20
+		this.BATTERY_MIN = process.env.BATTERY_MIN || 10
 		this.GREENHOUSE_TEMP_MIN = 74
 		this.GREENHOUSE_TEMP_MAX = 78 // keep this number pretty low, like 10 degrees less than actual max temp, because the probe is pretty low down in the chamber, the temp at the top is about 10 degrees warmer, and thats where the seedlings live.
 		this.GREENHOUSE_MOISTURE_MIN = 43 // after watering the moisture level drops down to about 48 pretty quickly, but it stays in the high fourties for hours. Need to experiment more to see what a good amount of drying out is.
