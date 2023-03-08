@@ -94,6 +94,7 @@ class sensorReader {
     }
 	console.log("received some data, managed lights and heat. Die. "); 
 	await sensor.controller.noble.stopScanning();
+	console.log("DEBUG: await sensor.controller.noble.stopScanning() completed. waiting for disconnectAsync, and then it should say [End time is:..."); 
 	await sensor.peripheral.disconnectAsync();
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
   let that = this;
