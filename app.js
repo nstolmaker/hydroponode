@@ -88,13 +88,18 @@ class sensorReader {
       this.waiting = true
       await this.controller.broadcast.recordSensorDataInDb(sensorData)
       const broadcastResult = await this.controller.broadcast.broadcastToWorkflowEngine(sensorData)
+      if (!broadcastResult) {
+	      console.log("[ERROR " + new Date().toLocaleString()+"] failed to broadcast. probably a network failure, try one more time");
+	      const broadcastResult2 = await this.controller.broadcast.broadcastToWorkflowEngine(sensorData);
+	      console.log("[DEBUG " + new Date().toLocaleString()+"] result of 2nd attempt was " + broadcastResult2);
+      }
       this.waiting = false
     } else {
       console.log("receiveData called with no data arg. ignoring it.");
     }
 	console.log("received some data, managed lights and heat. Die. "); 
 	await sensor.controller.noble.stopScanning();
-	console.log("DEBUG: await sensor.controller.noble.stopScanning() completed. waiting for disconnectAsync, and then it should say [End time is:..."); 
+	console.log("[DEBUG @ " + new Date().toLocaleString()+"] await sensor.controller.noble.stopScanning() completed. waiting for disconnectAsync, and then it should say [End time is:..."); 
 	await sensor.peripheral.disconnectAsync();
 	console.log("[End Time is: " + new Date().toLocaleString()+"] stoppedScanning and disconnected. Calling process.exit(1).");
   let that = this;
